@@ -41,46 +41,66 @@ export default function CampaignsPage() {
         fetchApi('/api/leads/')
       ]);
 
+      let backendStats = null;
       if (statsRes.ok) {
-        setDashboardStats(await statsRes.json());
+        backendStats = await statsRes.json();
       }
 
       if (leadsRes.ok) {
         const leadsData = await leadsRes.json();
-        
-        // Group leads into campaigns dynamically based on their campaign ID
         const campaignsMap = new Map();
         
         leadsData.forEach((lead: any) => {
           const cid = lead.campaign || 'unassigned';
-          if (cid === 'unassigned') return; // Skip unassigned for campaigns view
+          if (cid === 'unassigned') return; 
           
           if (!campaignsMap.has(cid)) {
             campaignsMap.set(cid, {
               id: cid,
               name: `Outreach Campaign (${cid.slice(0,8)})`,
-              subject: lead.email_subject || 'Dynamic AI Generated Subject',
-              reportAttached: 'Auto_Generated_Report.pdf',
               status: 'Active',
               scraped: 0,
+              rejected: 0, 
               audited: 0,
+              reportsGenerated: 0, 
               drafted: 0,
               emailed: 0,
+              readyForPdf: 0,
+              readyForDraft: 0,
+              readyToApprove: 0,
+              readyToSend: 0
             });
           }
           
           const camp = campaignsMap.get(cid);
           camp.scraped += 1;
-          if (lead.audited_at) camp.audited += 1;
-          if (lead.email_drafted_at) camp.drafted += 1;
-          if (lead.emailed_at) camp.emailed += 1;
+
+          if (['rejected', 'site_error', 'email_failed', 'no_email'].includes(lead.status)) {
+            camp.rejected += 1;
+          }
+
+          if (['audited', 'report_ready', 'email_drafted', 'approved_to_send', 'emailed'].includes(lead.status)) camp.audited += 1;
+          if (['report_ready', 'email_drafted', 'approved_to_send', 'emailed'].includes(lead.status)) camp.reportsGenerated += 1;
+          if (['email_drafted', 'approved_to_send', 'emailed'].includes(lead.status)) camp.drafted += 1;
+          if (lead.status === 'emailed') camp.emailed += 1;
+
+          if (lead.status === 'audited') camp.readyForPdf += 1;
+          if (lead.status === 'report_ready') camp.readyForDraft += 1;
+          if (lead.status === 'email_drafted') camp.readyToApprove += 1;
+          if (lead.status === 'approved_to_send') camp.readyToSend += 1;
           
-          if (camp.scraped === camp.emailed && camp.scraped > 0) {
+          if (camp.emailed + camp.rejected === camp.scraped && camp.scraped > 0) {
             camp.status = 'Completed';
           }
         });
 
-        setCampaigns(Array.from(campaignsMap.values()));
+        const campaignsArray = Array.from(campaignsMap.values());
+        setCampaigns(campaignsArray);
+
+        if (backendStats) {
+          const activeCount = campaignsArray.filter(c => c.status === 'Active').length;
+          setDashboardStats({ ...backendStats, active_campaigns: activeCount });
+        }
       }
     } catch (error) {
       console.error("Error fetching campaign data:", error);
@@ -120,7 +140,7 @@ export default function CampaignsPage() {
       
       showToast(`Campaign started in ${mode.toUpperCase()} mode! Background workers are scraping leads.`, "success");
       setIsModalOpen(false);
-      fetchCampaignData(); // Refresh UI
+      fetchCampaignData();
     } catch (error) {
       console.error(error);
       showToast("Failed to initialize campaign. Please try again.", "error");
@@ -292,7 +312,7 @@ export default function CampaignsPage() {
                   <tr className="bg-gray-50 text-xs uppercase tracking-wider text-fixer-muted font-bold border-b border-gray-200">
                     <th className="px-6 py-4">Campaign Info</th>
                     <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Pipeline Progress</th>
+                    <th className="px-6 py-4 min-w-[350px]">Pipeline Progress</th>
                     <th className="px-6 py-4 text-right">Manual Pipeline Actions</th>
                   </tr>
                 </thead>
@@ -322,10 +342,10 @@ export default function CampaignsPage() {
                         </td>
 
                         <td className="px-6 py-4">
-                          <div className="w-full min-w-[300px]">
+                          <div className="w-full">
                             <div className="flex justify-between text-xs font-bold text-fixer-muted mb-2">
                               <span>Pipeline Flow</span>
-                              <span className="text-fixer-primary">{Math.round((campaign.emailed / campaign.scraped) * 100) || 0}% Emailed</span>
+                              <span className="text-fixer-primary">{Math.round((campaign.emailed / (campaign.scraped || 1)) * 100) || 0}% Emailed</span>
                             </div>
                             
                             <div className="flex items-center gap-4 text-xs font-medium">
@@ -337,19 +357,25 @@ export default function CampaignsPage() {
                               </div>
                               <div className="flex-1">
                                 <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                  <div className="bg-fixer-secondary h-1.5 rounded-full" style={{ width: `${(campaign.audited / campaign.scraped) * 100}%` }}></div>
+                                  <div className="bg-fixer-secondary h-1.5 rounded-full" style={{ width: `${(campaign.audited / (campaign.scraped || 1)) * 100}%` }}></div>
                                 </div>
                                 <span className="text-gray-500">{campaign.audited} Audited</span>
                               </div>
                               <div className="flex-1">
                                 <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                  <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(campaign.drafted / campaign.scraped) * 100}%` }}></div>
+                                  <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(campaign.reportsGenerated / (campaign.scraped || 1)) * 100}%` }}></div>
+                                </div>
+                                <span className="text-gray-500">{campaign.reportsGenerated} Reports</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                                  <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(campaign.drafted / (campaign.scraped || 1)) * 100}%` }}></div>
                                 </div>
                                 <span className="text-gray-500">{campaign.drafted} Drafted</span>
                               </div>
                               <div className="flex-1">
                                 <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                  <div className="bg-fixer-accent h-1.5 rounded-full" style={{ width: `${(campaign.emailed / campaign.scraped) * 100}%` }}></div>
+                                  <div className="bg-fixer-accent h-1.5 rounded-full" style={{ width: `${(campaign.emailed / (campaign.scraped || 1)) * 100}%` }}></div>
                                 </div>
                                 <span className="text-gray-500">{campaign.emailed} Emailed</span>
                               </div>
@@ -359,33 +385,51 @@ export default function CampaignsPage() {
 
                         <td className="px-6 py-4 text-right">
                           <div className="flex flex-col items-end gap-2">
-                            {campaign.audited < campaign.scraped && (
+                            
+                            {/* Step 1: Generate PDFs */}
+                            {campaign.readyForPdf > 0 && (
                               <button 
-                                onClick={() => handleBulkAction(campaign.id, 'trigger_pdfs')}
+                                onClick={() => handleBulkAction(campaign.id, 'trigger_pdfs', 'POST')}
                                 disabled={isProcessing}
                                 className="px-3 py-1.5 text-xs font-bold text-fixer-secondary bg-cyan-50 border border-cyan-100 rounded-lg hover:bg-cyan-100 transition-colors"
                               >
-                                Trigger Bulk Audits
+                                Generate PDF Reports ({campaign.readyForPdf})
                               </button>
                             )}
-                            {campaign.drafted < campaign.audited && (
+                            
+                            {/* Step 2: Generate AI Email Drafts */}
+                            {campaign.readyForDraft > 0 && (
                               <button 
-                                onClick={() => handleBulkAction(campaign.id, 'compose_drafts')}
+                                onClick={() => handleBulkAction(campaign.id, 'compose_drafts', 'POST')}
                                 disabled={isProcessing}
                                 className="px-3 py-1.5 text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded-lg hover:bg-purple-100 transition-colors"
                               >
-                                Generate AI Drafts
+                                Generate AI Drafts ({campaign.readyForDraft})
                               </button>
                             )}
-                            {campaign.emailed < campaign.drafted && (
+
+                            {/* Step 3: Approve Drafts (Backend uses PATCH for this) */}
+                            {campaign.readyToApprove > 0 && (
                               <button 
-                                onClick={() => handleBulkAction(campaign.id, 'send_emails', 'PATCH')}
+                                onClick={() => handleBulkAction(campaign.id, 'approve_drafts', 'PATCH')}
+                                disabled={isProcessing}
+                                className="px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition-colors"
+                              >
+                                Approve Drafts ({campaign.readyToApprove})
+                              </button>
+                            )}
+
+                            {/* Step 4: Dispatch the Emails */}
+                            {campaign.readyToSend > 0 && (
+                              <button 
+                                onClick={() => handleBulkAction(campaign.id, 'send_emails', 'POST')}
                                 disabled={isProcessing}
                                 className="px-3 py-1.5 text-xs font-bold text-white bg-fixer-accent rounded-lg hover:bg-emerald-600 transition-colors"
                               >
-                                Approve & Send All
+                                Send Approved Emails ({campaign.readyToSend})
                               </button>
                             )}
+
                             {campaign.status === 'Completed' && (
                               <span className="text-xs font-bold text-gray-400">All Pipeline Actions Complete</span>
                             )}
