@@ -144,7 +144,6 @@ export default function SettingsPage() {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
         },
         body: formData
       });

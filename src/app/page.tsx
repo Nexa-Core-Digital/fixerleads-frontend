@@ -16,7 +16,6 @@ export default function Home() {
       const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL || "http://localhost:8001";
       const headers = {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
       };
 
       try {
