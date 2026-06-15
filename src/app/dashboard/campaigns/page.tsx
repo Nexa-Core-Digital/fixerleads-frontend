@@ -88,13 +88,15 @@ export default function CampaignsPage() {
           if (lead.status === 'report_ready') camp.readyForDraft += 1;
           if (lead.status === 'email_drafted') camp.readyToApprove += 1;
           if (lead.status === 'approved_to_send') camp.readyToSend += 1;
-          
+        });
+
+        const campaignsArray = Array.from(campaignsMap.values()).map((camp: any) => {
           if (camp.emailed + camp.rejected === camp.scraped && camp.scraped > 0) {
             camp.status = 'Completed';
           }
+          return camp;
         });
-
-        const campaignsArray = Array.from(campaignsMap.values());
+        
         setCampaigns(campaignsArray);
 
         if (backendStats) {
@@ -111,6 +113,12 @@ export default function CampaignsPage() {
 
   useEffect(() => {
     fetchCampaignData();
+
+    const pollInterval = setInterval(() => {
+      fetchCampaignData();
+    }, 10000); 
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   const validateSubscription = () => {
@@ -136,14 +144,34 @@ export default function CampaignsPage() {
         method: 'POST',
         body: JSON.stringify({ mode })
       });
-      if (!res.ok) throw new Error("Failed to start campaign");
+      
+      if (!res.ok) {
+        let errorMessage = "Failed to start campaign.";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorData.detail || errorMessage;
+        } catch (parseError) {
+          console.error("Could not parse backend error response");
+        }
+        throw new Error(errorMessage);
+      }
       
       showToast(`Campaign started in ${mode.toUpperCase()} mode! Background workers are scraping leads.`, "success");
       setIsModalOpen(false);
       fetchCampaignData();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      showToast("Failed to initialize campaign. Please try again.", "error");
+      
+      showToast(error.message, "error");
+      
+      const errorStr = error.message.toLowerCase();
+      if (errorStr.includes("configure") || errorStr.includes("settings") || errorStr.includes("niche") || errorStr.includes("location")) {
+        setTimeout(() => {
+          setIsModalOpen(false);
+          router.push('/dashboard/settings');
+        }, 2000);
+      }
+      
     } finally {
       setIsProcessing(false);
     }
@@ -324,120 +352,129 @@ export default function CampaignsPage() {
                       </td>
                     </tr>
                   ) : filteredCampaigns.length > 0 ? (
-                    filteredCampaigns.map((campaign) => (
-                      <tr key={campaign.id} className="hover:bg-gray-50 transition-colors group">
-                        
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-fixer-darkBg text-sm">{campaign.name}</div>
-                          <div className="text-xs text-fixer-muted mt-1 font-mono">{campaign.id}</div>
-                        </td>
+                    filteredCampaigns.map((campaign) => {
+                      const hasAvailableActions = campaign.readyForPdf > 0 || campaign.readyForDraft > 0 || campaign.readyToApprove > 0 || campaign.readyToSend > 0;
+                      
+                      return (
+                        <tr key={campaign.id} className="hover:bg-gray-50 transition-colors group">
+                          
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-fixer-darkBg text-sm">{campaign.name}</div>
+                            <div className="text-xs text-fixer-muted mt-1 font-mono">{campaign.id}</div>
+                          </td>
 
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${
-                            campaign.status === 'Active' ? 'bg-emerald-50 text-fixer-accent border-emerald-100' : 'bg-gray-100 text-gray-700 border-gray-200'
-                          }`}>
-                            {campaign.status === 'Active' && <span className="w-1.5 h-1.5 rounded-full bg-fixer-accent animate-pulse"></span>}
-                            {campaign.status}
-                          </span>
-                        </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${
+                              campaign.status === 'Active' ? 'bg-emerald-50 text-fixer-accent border-emerald-100' : 'bg-gray-100 text-gray-700 border-gray-200'
+                            }`}>
+                              {campaign.status === 'Active' && <span className="w-1.5 h-1.5 rounded-full bg-fixer-accent animate-pulse"></span>}
+                              {campaign.status}
+                            </span>
+                          </td>
 
-                        <td className="px-6 py-4">
-                          <div className="w-full">
-                            <div className="flex justify-between text-xs font-bold text-fixer-muted mb-2">
-                              <span>Pipeline Flow</span>
-                              <span className="text-fixer-primary">{Math.round((campaign.emailed / (campaign.scraped || 1)) * 100) || 0}% Emailed</span>
+                          <td className="px-6 py-4">
+                            <div className="w-full">
+                              <div className="flex justify-between text-xs font-bold text-fixer-muted mb-2">
+                                <span>Pipeline Flow</span>
+                                <span className="text-fixer-primary">{Math.round((campaign.emailed / (campaign.scraped || 1)) * 100) || 0}% Emailed</span>
+                              </div>
+                              
+                              <div className="flex items-center gap-4 text-xs font-medium">
+                                <div className="flex-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                                    <div className="bg-gray-800 h-1.5 rounded-full" style={{ width: '100%' }}></div>
+                                  </div>
+                                  <span className="text-gray-500">{campaign.scraped} Scraped</span>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                                    <div className="bg-fixer-secondary h-1.5 rounded-full" style={{ width: `${(campaign.audited / (campaign.scraped || 1)) * 100}%` }}></div>
+                                  </div>
+                                  <span className="text-gray-500">{campaign.audited} Audited</span>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                                    <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(campaign.reportsGenerated / (campaign.scraped || 1)) * 100}%` }}></div>
+                                  </div>
+                                  <span className="text-gray-500">{campaign.reportsGenerated} Reports</span>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                                    <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(campaign.drafted / (campaign.scraped || 1)) * 100}%` }}></div>
+                                  </div>
+                                  <span className="text-gray-500">{campaign.drafted} Drafted</span>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                                    <div className="bg-fixer-accent h-1.5 rounded-full" style={{ width: `${(campaign.emailed / (campaign.scraped || 1)) * 100}%` }}></div>
+                                  </div>
+                                  <span className="text-gray-500">{campaign.emailed} Emailed</span>
+                                </div>
+                              </div>
                             </div>
-                            
-                            <div className="flex items-center gap-4 text-xs font-medium">
-                              <div className="flex-1">
-                                <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                  <div className="bg-gray-800 h-1.5 rounded-full" style={{ width: '100%' }}></div>
-                                </div>
-                                <span className="text-gray-500">{campaign.scraped} Scraped</span>
-                              </div>
-                              <div className="flex-1">
-                                <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                  <div className="bg-fixer-secondary h-1.5 rounded-full" style={{ width: `${(campaign.audited / (campaign.scraped || 1)) * 100}%` }}></div>
-                                </div>
-                                <span className="text-gray-500">{campaign.audited} Audited</span>
-                              </div>
-                              <div className="flex-1">
-                                <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                  <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(campaign.reportsGenerated / (campaign.scraped || 1)) * 100}%` }}></div>
-                                </div>
-                                <span className="text-gray-500">{campaign.reportsGenerated} Reports</span>
-                              </div>
-                              <div className="flex-1">
-                                <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                  <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(campaign.drafted / (campaign.scraped || 1)) * 100}%` }}></div>
-                                </div>
-                                <span className="text-gray-500">{campaign.drafted} Drafted</span>
-                              </div>
-                              <div className="flex-1">
-                                <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                  <div className="bg-fixer-accent h-1.5 rounded-full" style={{ width: `${(campaign.emailed / (campaign.scraped || 1)) * 100}%` }}></div>
-                                </div>
-                                <span className="text-gray-500">{campaign.emailed} Emailed</span>
-                              </div>
+                          </td>
+
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex flex-col items-end gap-2">
+                              
+                              {campaign.readyForPdf > 0 && (
+                                <button 
+                                  onClick={() => handleBulkAction(campaign.id, 'trigger_pdfs', 'POST')}
+                                  disabled={isProcessing}
+                                  className="px-3 py-1.5 text-xs font-bold text-fixer-secondary bg-cyan-50 border border-cyan-100 rounded-lg hover:bg-cyan-100 transition-colors"
+                                >
+                                  Generate PDF Reports ({campaign.readyForPdf})
+                                </button>
+                              )}
+                              
+                              {campaign.readyForDraft > 0 && (
+                                <button 
+                                  onClick={() => handleBulkAction(campaign.id, 'compose_drafts', 'POST')}
+                                  disabled={isProcessing}
+                                  className="px-3 py-1.5 text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded-lg hover:bg-purple-100 transition-colors"
+                                >
+                                  Generate AI Drafts ({campaign.readyForDraft})
+                                </button>
+                              )}
+
+                              {campaign.readyToApprove > 0 && (
+                                <button 
+                                  onClick={() => handleBulkAction(campaign.id, 'approve_drafts', 'PATCH')}
+                                  disabled={isProcessing}
+                                  className="px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition-colors"
+                                >
+                                  Approve Drafts ({campaign.readyToApprove})
+                                </button>
+                              )}
+
+                              {campaign.readyToSend > 0 && (
+                                <button 
+                                  onClick={() => handleBulkAction(campaign.id, 'send_emails', 'POST')}
+                                  disabled={isProcessing}
+                                  className="px-3 py-1.5 text-xs font-bold text-white bg-fixer-accent rounded-lg hover:bg-emerald-600 transition-colors"
+                                >
+                                  Send Approved Emails ({campaign.readyToSend})
+                                </button>
+                              )}
+
+                              {campaign.status === 'Completed' && (
+                                <span className="text-xs font-bold text-gray-400">All Pipeline Actions Complete</span>
+                              )}
+
+                              {/* NEW: Fallback indicator when waiting for backend processing */}
+                              {!hasAvailableActions && campaign.status !== 'Completed' && (
+                                <span className="text-xs font-bold text-fixer-secondary flex items-center gap-1.5">
+                                  <div className="w-3 h-3 border-2 border-fixer-secondary border-t-transparent rounded-full animate-spin"></div>
+                                  Waiting for background tasks...
+                                </span>
+                              )}
+
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex flex-col items-end gap-2">
-                            
-                            {/* Step 1: Generate PDFs */}
-                            {campaign.readyForPdf > 0 && (
-                              <button 
-                                onClick={() => handleBulkAction(campaign.id, 'trigger_pdfs', 'POST')}
-                                disabled={isProcessing}
-                                className="px-3 py-1.5 text-xs font-bold text-fixer-secondary bg-cyan-50 border border-cyan-100 rounded-lg hover:bg-cyan-100 transition-colors"
-                              >
-                                Generate PDF Reports ({campaign.readyForPdf})
-                              </button>
-                            )}
-                            
-                            {/* Step 2: Generate AI Email Drafts */}
-                            {campaign.readyForDraft > 0 && (
-                              <button 
-                                onClick={() => handleBulkAction(campaign.id, 'compose_drafts', 'POST')}
-                                disabled={isProcessing}
-                                className="px-3 py-1.5 text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded-lg hover:bg-purple-100 transition-colors"
-                              >
-                                Generate AI Drafts ({campaign.readyForDraft})
-                              </button>
-                            )}
-
-                            {/* Step 3: Approve Drafts (Backend uses PATCH for this) */}
-                            {campaign.readyToApprove > 0 && (
-                              <button 
-                                onClick={() => handleBulkAction(campaign.id, 'approve_drafts', 'PATCH')}
-                                disabled={isProcessing}
-                                className="px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition-colors"
-                              >
-                                Approve Drafts ({campaign.readyToApprove})
-                              </button>
-                            )}
-
-                            {/* Step 4: Dispatch the Emails */}
-                            {campaign.readyToSend > 0 && (
-                              <button 
-                                onClick={() => handleBulkAction(campaign.id, 'send_emails', 'POST')}
-                                disabled={isProcessing}
-                                className="px-3 py-1.5 text-xs font-bold text-white bg-fixer-accent rounded-lg hover:bg-emerald-600 transition-colors"
-                              >
-                                Send Approved Emails ({campaign.readyToSend})
-                              </button>
-                            )}
-
-                            {campaign.status === 'Completed' && (
-                              <span className="text-xs font-bold text-gray-400">All Pipeline Actions Complete</span>
-                            )}
-                          </div>
-                        </td>
-
-                      </tr>
-                    ))
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={4} className="px-6 py-8 text-center text-sm text-fixer-muted">
