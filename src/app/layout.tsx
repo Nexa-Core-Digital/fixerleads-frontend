@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import "./globals.css";
+import AuthGuard from "@/components/AuthGuard";
 
 export const metadata: Metadata = {
   title: "FixerLeads | AI-Powered Lead Generation",
@@ -16,7 +17,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>
-          {children}
+          <AuthGuard>
+            {children}
+          </AuthGuard>
         </GoogleOAuthProvider>
       </body>
     </html>

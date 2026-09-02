@@ -18,5 +18,13 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     headers,
   });
 
+  if (response.status === 401) {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/login';
+    }
+  }
+
   return response;
 }

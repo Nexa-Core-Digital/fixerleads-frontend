@@ -6,8 +6,7 @@ import { fetchApi } from "@/lib/api";
 
 export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Profile Data State
+
   const [profileData, setProfileData] = useState({
     full_name: "",
     email: "",
@@ -24,43 +23,46 @@ export default function SettingsPage() {
     linkedin_url: ""
   });
 
-  // Avatar Upload States
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Agent Settings State
   const [agentData, setAgentData] = useState({
     agency_name: "",
     sender_name: "",
     target_niche: "",
     target_location: "",
-    app_password: ""
+    google_client_id: "",
+    google_client_secret: "",
+    google_refresh_token: ""
   });
 
-  // Password Data State
+  const [showInstructions, setShowInstructions] = useState(false);
+
   const [passwordData, setPasswordData] = useState({
     oldPassword: "",
     newPassword: "",
     confirmPassword: ""
   });
 
-  // UI States
   const [passwordError, setPasswordError] = useState("");
   const [globalMessage, setGlobalMessage] = useState({ type: "", text: "" });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingAgent, setIsSavingAgent] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
-
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const res = await fetchApi('/api/users/me/');
-        if (res.ok) {
-          const data = await res.json();
+        const [userRes, agentRes] = await Promise.all([
+          fetchApi('/api/users/me/'),
+          fetchApi('/api/leads/agent-settings/')
+        ]);
+
+        if (userRes.ok) {
+          const data = await userRes.json();
           setProfileData({
             full_name: data.basic_info?.full_name || "",
             email: data.email || "",
@@ -81,8 +83,19 @@ export default function SettingsPage() {
             setPreviewUrl(data.basic_info.profile_picture);
           }
         }
+
+        if (agentRes.ok) {
+          const agent = await agentRes.json();
+          setAgentData((prev) => ({
+            ...prev,
+            agency_name: agent.agency_name || "",
+            sender_name: agent.sender_name || "",
+            target_niche: agent.target_niche || "",
+            target_location: agent.target_location || ""
+          }));
+        }
       } catch (error) {
-        console.error("Failed to fetch user data:", error);
+        console.error("Failed to fetch initial settings:", error);
       } finally {
         setIsLoading(false);
       }
@@ -176,7 +189,13 @@ export default function SettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save agent settings");
       
-      showMessage("success", "Agent settings configured successfully!");
+      showMessage("success", "Agent credentials & configuration saved successfully!");
+      setAgentData((prev) => ({
+        ...prev,
+        google_client_id: "",
+        google_client_secret: "",
+        google_refresh_token: ""
+      }));
     } catch (error: any) {
       showMessage("error", error.message);
     } finally {
@@ -276,7 +295,6 @@ export default function SettingsPage() {
             <form onSubmit={handleProfileSubmit} className="p-6 sm:p-8 space-y-6">
               
               <div className="flex items-center gap-6 mb-8">
-                {/* Hidden File Input */}
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -395,14 +413,14 @@ export default function SettingsPage() {
             </form>
           </div>
 
-          {/* Agent Settings Form */}
+          {/* Agent Settings Form (Google API Integration) */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-200 bg-gray-50/50">
               <h2 className="text-lg font-bold text-fixer-darkBg flex items-center gap-2">
                 <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                Configure Agent Settings
+                Configure Agent Settings & Gmail API
               </h2>
-              <p className="text-sm text-fixer-muted mt-1">Configure parameters for your automated email outreach agent.</p>
+              <p className="text-sm text-fixer-muted mt-1">Configure parameters and your Google Cloud OAuth2 credentials for automated outreach dispatching.</p>
             </div>
             
             <form onSubmit={handleAgentSubmit} className="p-6 sm:p-8 space-y-6">
@@ -428,15 +446,109 @@ export default function SettingsPage() {
                   <input type="text" name="target_location" value={agentData.target_location} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="e.g. Brooklyn, New York" />
                 </div>
 
+                <div className="sm:col-span-2 border-t border-gray-100 my-1 pt-4">
+                  <h3 className="text-sm font-extrabold text-fixer-darkBg flex items-center gap-2 mb-1">
+                    <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    Google OAuth2 Credentials (Encrypted)
+                  </h3>
+                  <p className="text-xs text-fixer-muted">These credentials remain private and encrypted. Input them once or whenever you want to rotate them.</p>
+                </div>
+
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-bold text-fixer-text">Gmail App Password</label>
-                  <input type="password" name="app_password" value={agentData.app_password} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="16-digit App Password" />
-                  <p className="text-xs text-fixer-muted mt-2">Generate this from your Google Account Security settings to allow standard SMTP dispatching.</p>
+                  <label className="block text-sm font-bold text-fixer-text">Google Client ID</label>
+                  <input type="text" name="google_client_id" value={agentData.google_client_id} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm font-mono transition-colors text-fixer-text" placeholder="e.g. 1234567890-xxx.apps.googleusercontent.com" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-fixer-text">Google Client Secret</label>
+                  <input type="password" name="google_client_secret" value={agentData.google_client_secret} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm font-mono transition-colors text-fixer-text" placeholder="GOCSPX-xxxxxxxxxxxx" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-fixer-text">Google Refresh Token</label>
+                  <input type="password" name="google_refresh_token" value={agentData.google_refresh_token} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm font-mono transition-colors text-fixer-text" placeholder="1//0gxxxxxxxxxxxxxxxx" />
                 </div>
 
               </div>
 
-              <div className="pt-4 flex justify-start">
+              {/* Instructions Dropdown */}
+              <div className="pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowInstructions(!showInstructions)}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 text-left transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm font-bold text-fixer-darkBg">How to get your Google Cloud & OAuth2 Credentials?</span>
+                  </div>
+                  <svg
+                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${showInstructions ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {showInstructions && (
+                  <div className="mt-3 p-5 bg-white border border-blue-100 rounded-xl space-y-4 text-sm text-gray-700 leading-relaxed shadow-sm animate-in fade-in duration-200">
+                    <div>
+                      <h4 className="font-extrabold text-fixer-darkBg mb-1">Step 1: Create a Project & Enable Gmail API</h4>
+                      <p className="text-xs text-gray-600">
+                        Go to the{" "}
+                        <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline">
+                          Google Cloud Console
+                        </a>
+                        , create a new project (e.g., <em>FixerLeads Outreach</em>), navigate to <strong>APIs & Services &gt; Library</strong>, search for <strong>Gmail API</strong>, and click <strong>Enable</strong>.
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-extrabold text-fixer-darkBg mb-1">Step 2: Configure OAuth Consent Screen & Test Users</h4>
+                      <p className="text-xs text-gray-600">
+                        Navigate to <strong>APIs & Services &gt; OAuth consent screen</strong>. Choose <strong>External</strong>, provide your App Name and Email, and continue. Under <strong>Test users</strong>, click <strong>+ Add Users</strong> and enter your sending Gmail/Workspace address.
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-extrabold text-fixer-darkBg mb-1">Step 3: Create OAuth 2.0 Client ID</h4>
+                      <p className="text-xs text-gray-600">
+                        Go to <strong>APIs & Services &gt; Credentials</strong> &gt; click <strong>Create Credentials &gt; OAuth client ID</strong>.
+                      </p>
+                      <ul className="text-xs text-gray-600 list-disc list-inside mt-1 space-y-1">
+                        <li><strong>Application type:</strong> Web application</li>
+                        <li><strong>Authorized redirect URIs:</strong> Add <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-800">https://developers.google.com/oauthplayground</code></li>
+                      </ul>
+                      <p className="text-xs text-gray-600 mt-1">Copy your generated <strong>Client ID</strong> and <strong>Client Secret</strong>.</p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-extrabold text-fixer-darkBg mb-1">Step 4: Generate Refresh Token via OAuth Playground</h4>
+                      <p className="text-xs text-gray-600">
+                        Open the{" "}
+                        <a href="https://developers.google.com/oauthplayground" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline">
+                          Google OAuth 2.0 Playground
+                        </a>
+                        .
+                      </p>
+                      <ol className="text-xs text-gray-600 list-decimal list-inside mt-1 space-y-1">
+                        <li>Click the <strong>Settings icon (gear)</strong> at the top right, check <strong>Use your own OAuth credentials</strong>, and paste your <em>OAuth Client ID</em> & <em>OAuth Client Secret</em>.</li>
+                        <li>In the left column (Step 1), scroll to <strong>Gmail API v1</strong> and check <code className="bg-gray-100 px-1 py-0.5 rounded">https://mail.google.com/</code>.</li>
+                        <li>Click <strong>Authorize APIs</strong>, sign into your Google account, and grant full email permissions.</li>
+                        <li>In Step 2, click <strong>Exchange authorization code for tokens</strong>.</li>
+                        <li>Copy the generated <strong>Refresh token</strong> and paste all 3 values into the fields above!</li>
+                      </ol>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 flex justify-start">
                 <button type="submit" disabled={isSavingAgent} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-md shadow-purple-500/20 transition-all disabled:opacity-50">
                   {isSavingAgent ? "Saving..." : "Save Agent Configuration"}
                 </button>

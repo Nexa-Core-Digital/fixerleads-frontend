@@ -11,10 +11,8 @@ export default function AdminPanelPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Toast Notification
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
-  // --- State for Modules ---
   const [metrics, setMetrics] = useState<any>(null);
   const [celeryStatus, setCeleryStatus] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
@@ -22,7 +20,6 @@ export default function AdminPanelPage() {
   const [vaultKeys, setVaultKeys] = useState<any[]>([]);
   const [externalProjects, setExternalProjects] = useState<any[]>([]);
 
-  // --- Modals State ---
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
@@ -36,7 +33,6 @@ export default function AdminPanelPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // --- Data Fetching ---
   const fetchDashboardData = async () => {
     try {
       const [metricsRes, celeryRes] = await Promise.all([
@@ -86,7 +82,6 @@ export default function AdminPanelPage() {
     setIsLoading(false);
   }, [activeTab]);
 
-  // --- API Handlers ---
   const extendSubscription = async (userId: string) => {
     setIsProcessing(true);
     try {
@@ -190,7 +185,6 @@ export default function AdminPanelPage() {
       
       if (!res.ok) throw new Error("Failed to generate project key.");
       
-      // Handle File Download
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

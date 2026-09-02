@@ -15,12 +15,10 @@ export default function LeadFinderPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Filters
   const [industryFilter, setIndustryFilter] = useState("");
   const [scoreFilter, setScoreFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   
-  // Toast Notification
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {

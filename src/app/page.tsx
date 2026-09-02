@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const router = useRouter();
   const [faqs, setFaqs] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [isLoadingFaqs, setIsLoadingFaqs] = useState(true);
@@ -19,7 +21,6 @@ export default function Home() {
       };
 
       try {
-        // Fetch Home FAQs
         fetch(`${baseUrl}/api/utils/faqs/?page=home`, { headers })
           .then(res => res.ok ? res.json() : [])
           .then(data => {
@@ -28,7 +29,6 @@ export default function Home() {
           })
           .catch(() => setIsLoadingFaqs(false));
 
-        // Fetch Plans
         fetch(`${baseUrl}/api/payments/plans/`, { headers })
           .then(res => res.ok ? res.json() : [])
           .then(data => {
@@ -91,7 +91,6 @@ export default function Home() {
             <p className="mt-4 text-fixer-muted">A complete suite of tools to automate your outbound workflow.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Card 1 */}
             <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-gray-100 group">
               <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-7 h-7 text-fixer-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -99,7 +98,6 @@ export default function Home() {
               <h3 className="text-xl font-bold mb-3 text-fixer-darkBg">Find Leads</h3>
               <p className="text-fixer-muted leading-relaxed">Extract high-quality business leads directly from Google Maps in any specific niche or location worldwide.</p>
             </div>
-            {/* Card 2 */}
             <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-gray-100 group">
               <div className="w-14 h-14 rounded-xl bg-cyan-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-7 h-7 text-fixer-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v8l9-11h-7z" /></svg>
@@ -107,7 +105,6 @@ export default function Home() {
               <h3 className="text-xl font-bold mb-3 text-fixer-darkBg">AI Analyze</h3>
               <p className="text-fixer-muted leading-relaxed">Perform instant website audits, extract deep business insights, and generate intelligent opportunity scoring.</p>
             </div>
-            {/* Card 3 */}
             <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-gray-100 group">
               <div className="w-14 h-14 rounded-xl bg-emerald-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-7 h-7 text-fixer-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -115,7 +112,6 @@ export default function Home() {
               <h3 className="text-xl font-bold mb-3 text-fixer-darkBg">Lead Scoring</h3>
               <p className="text-fixer-muted leading-relaxed">Each captured lead receives an automated 1–10 score based strictly on actual conversion potential and data completeness.</p>
             </div>
-            {/* Card 4 */}
             <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-gray-100 group">
               <div className="w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-7 h-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -123,7 +119,6 @@ export default function Home() {
               <h3 className="text-xl font-bold mb-3 text-fixer-darkBg">Auto Reports</h3>
               <p className="text-fixer-muted leading-relaxed">Instantly generate beautiful, white-labeled PDF reports detailing business insights to attach to your outreach.</p>
             </div>
-            {/* Card 5 */}
             <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-gray-100 group">
               <div className="w-14 h-14 rounded-xl bg-indigo-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-7 h-7 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -131,31 +126,85 @@ export default function Home() {
               <h3 className="text-xl font-bold mb-3 text-fixer-darkBg">Outreach Automation</h3>
               <p className="text-fixer-muted leading-relaxed">Generate highly personalized, context-aware emails and dispatch them automatically directly from the platform.</p>
             </div>
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-gray-100 group flex flex-col items-center justify-center text-center">
+              <div className="w-14 h-14 rounded-xl bg-gray-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <svg className="w-7 h-7 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+              </div>
+              <h3 className="text-xl font-bold mb-2 text-fixer-darkBg">Enterprise APIs</h3>
+              <p className="text-fixer-muted leading-relaxed text-sm">Integrate FixerLeads directly into your own applications with our developer-friendly REST API.</p>
+            </div>
           </div>
         </section>
 
-        {/* SECTION 3 — ONE CLICK MAGIC */}
-        <section className="bg-fixer-darkBg relative py-32 overflow-hidden">
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
-          
-          <div className="max-w-6xl mx-auto px-4 text-center relative z-10">
-            <h2 className="text-4xl md:text-5xl font-extrabold mb-6 text-white tracking-tight">One Click → Full Sales Pipeline</h2>
-            <p className="text-xl text-gray-400 mb-16 max-w-2xl mx-auto">Stop constantly switching between isolated tools. Every step of your workflow happens in one seamless environment.</p>
-            
-            <div className="flex flex-wrap justify-center items-center gap-2 md:gap-4 text-sm md:text-lg font-semibold text-gray-300">
-              <span className="bg-white/5 border border-white/10 px-6 py-3 rounded-xl backdrop-blur-sm">Search</span>
-              <svg className="w-5 h-5 text-fixer-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-              <span className="bg-white/5 border border-white/10 px-6 py-3 rounded-xl backdrop-blur-sm">Scrape</span>
-              <svg className="w-5 h-5 text-fixer-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-              <span className="bg-white/5 border border-white/10 px-6 py-3 rounded-xl backdrop-blur-sm">Analyze</span>
-              <svg className="w-5 h-5 text-fixer-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-              <span className="bg-white/5 border border-white/10 px-6 py-3 rounded-xl backdrop-blur-sm">Score</span>
-              <svg className="w-5 h-5 text-fixer-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-              <span className="bg-white/5 border border-white/10 px-6 py-3 rounded-xl backdrop-blur-sm">Report</span>
-              <svg className="w-5 h-5 text-fixer-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-              <span className="bg-white/5 border border-white/10 px-6 py-3 rounded-xl backdrop-blur-sm">Email</span>
-              <svg className="w-5 h-5 text-fixer-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-              <span className="bg-gradient-to-r from-fixer-accent to-emerald-400 text-white px-8 py-3 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.3)]">Track</span>
+        {/* NEW SECTION — PIPELINE PROCESS & OUTPUT (How it benefits the user) */}
+        <section className="bg-white border-y border-gray-100 py-24">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold text-fixer-darkBg">Your completely automated pipeline</h2>
+              <p className="mt-4 text-fixer-muted max-w-2xl mx-auto">See how FixerLeads transforms raw map data into highly qualified sales conversations, saving you hundreds of hours per month.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <div className="space-y-8">
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0 mt-1">1</div>
+                  <div>
+                    <h4 className="text-xl font-bold text-fixer-darkBg mb-2">Automated Discovery</h4>
+                    <p className="text-gray-600 leading-relaxed">Our engine crawls Google Maps to find every relevant business in your target niche and location, bypassing the manual search process entirely.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center font-bold shrink-0 mt-1">2</div>
+                  <div>
+                    <h4 className="text-xl font-bold text-fixer-darkBg mb-2">Deep Site Auditing</h4>
+                    <p className="text-gray-600 leading-relaxed">We autonomously navigate to each lead's website, checking for SEO bottlenecks, mobile responsiveness, and missing contact information.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold shrink-0 mt-1">3</div>
+                  <div>
+                    <h4 className="text-xl font-bold text-fixer-darkBg mb-2">AI-Driven Personalization</h4>
+                    <p className="text-gray-600 leading-relaxed">Anthropic Claude AI analyzes the audit data to draft highly personalized, context-aware emails that reference the specific issues found on their site.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold shrink-0 mt-1">4</div>
+                  <div>
+                    <h4 className="text-xl font-bold text-fixer-darkBg mb-2">Native Gmail Dispatch</h4>
+                    <p className="text-gray-600 leading-relaxed">Emails are sent directly from your own authenticated Google Workspace account, ensuring maximum deliverability and trust.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 shadow-inner">
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-4">
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded bg-gray-200 flex items-center justify-center font-bold text-gray-500">M</div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">Mahfuz Alam</p>
+                        <p className="text-xs text-gray-500">to: contact@chicagoplumbing.com</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Delivered</span>
+                  </div>
+                  <h5 className="font-bold text-gray-900 mb-2">Subject: Ideas for Chicago Plumbing Experts's website</h5>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Hi there,<br/><br/>
+                    I was looking for plumbers in Chicago and came across Chicago Plumbing Experts. You have great reviews on Google Maps!<br/><br/>
+                    While browsing your site, I noticed a few technical issues that might be hurting your local search rankings, specifically some missing HTTPS configurations and slow load times.<br/><br/>
+                    I ran a quick SEO audit and attached the PDF report here for you to review. Let me know if you have 5 minutes next week to discuss how we can fix these issues.<br/><br/>
+                    Best,<br/>
+                    Mahfuz Alam | NexaCore Digital
+                  </p>
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2">
+                    <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center text-red-600">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-1.25 17.292l-4.5-4.364 1.857-1.858 2.643 2.506 5.643-5.784 1.857 1.857-7.5 7.643z"/></svg>
+                    </div>
+                    <span className="text-xs font-medium text-gray-600">Chicago_Plumbing_SEO_Audit.pdf</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -185,54 +234,25 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SECTION 5 — HOW IT WORKS */}
-        <section id="how-it-works" className="bg-white border-y border-gray-100 py-24">
-          <div className="max-w-4xl mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-16 text-fixer-darkBg">How FixerLeads Works</h2>
-            <div className="space-y-6">
-              {[
-                { title: "Enter Query", desc: "Type your target keyword and location into the intelligent search bar." },
-                { title: "AI Collection", desc: "Our engine maps and collects hundreds of verified business records." },
-                { title: "Deep Analysis", desc: "The system audits each website, checking for modern standards and tech stack." },
-                { title: "Smart Ranking", desc: "You receive a clean list ranked entirely by close-probability." },
-                { title: "One-Click Outreach", desc: "Trigger personalized email sequences instantly with attached custom reports." }
-              ].map((step, index) => (
-                <div key={index} className="flex bg-fixer-bg p-6 rounded-2xl border border-gray-100 items-start gap-6 transition-all hover:shadow-md">
-                  <div className="w-12 h-12 shrink-0 rounded-full bg-white text-fixer-primary flex items-center justify-center text-xl font-bold border border-gray-200 shadow-sm">
-                    {index + 1}
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-bold text-fixer-darkBg">{step.title}</h4>
-                    <p className="text-fixer-muted mt-1">{step.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* SECTION 6 — DEMO PREVIEW */}
         <section id="demo" className="max-w-6xl mx-auto px-4 py-32">
           <div className="bg-fixer-darkBg rounded-[2rem] p-4 shadow-2xl relative">
-            {/* Fake Browser Header */}
             <div className="flex gap-2 mb-4 px-4 pt-2">
               <div className="w-3 h-3 rounded-full bg-red-500"></div>
               <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
             </div>
-            {/* Dashboard Area - Replace src with your actual image path */}
             <div className="bg-white rounded-xl h-[300px] md:h-[600px] w-full flex items-center justify-center border border-gray-200 shadow-inner overflow-hidden relative">
               <img 
                 src="/DashboardInterfacePreview.png" 
                 alt="Dashboard Interface Preview" 
-                className="w-full h-full object-contain" /* Changed from object-cover to object-contain */
+                className="w-full h-full object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                   target.nextElementSibling?.classList.remove('hidden');
                 }}
               />
-              {/* Fallback View if image is missing */}
               <div className="hidden text-center px-4 absolute inset-0 flex-col items-center justify-center bg-gray-50">
                 <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                 <p className="text-fixer-muted font-medium text-lg">Dashboard Interface Preview</p>
@@ -286,11 +306,15 @@ export default function Home() {
                       <li className="flex items-center gap-3"><svg className="w-5 h-5 text-fixer-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg> Automated Sequence Workflow</li>
                     </ul>
                     
-                    <button className={`w-full py-4 rounded-xl font-bold transition-all ${
-                      isPopular 
-                      ? 'bg-fixer-primary hover:bg-fixer-primaryHover text-white shadow-lg shadow-blue-500/25' 
-                      : 'border-2 border-fixer-primary text-fixer-primary hover:bg-blue-50'
-                    }`}>
+                    {/* Updated button to redirect to /register */}
+                    <button 
+                      onClick={() => router.push('/register')}
+                      className={`w-full py-4 rounded-xl font-bold transition-all ${
+                        isPopular 
+                        ? 'bg-fixer-primary hover:bg-fixer-primaryHover text-white shadow-lg shadow-blue-500/25' 
+                        : 'border-2 border-fixer-primary text-fixer-primary hover:bg-blue-50'
+                      }`}
+                    >
                       Choose {plan.name || plan.plan_name}
                     </button>
                   </div>
@@ -340,7 +364,6 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
             
-            {/* Branding Column */}
             <div className="lg:col-span-2">
               <div className="text-2xl font-extrabold text-white mb-6 flex items-center gap-2 tracking-tight">
                 <Image src="/icon.png" alt="FixerLeads Logo" width={32} height={32} className="object-contain brightness-0 invert" />
@@ -350,7 +373,6 @@ export default function Home() {
                 AI-Powered Lead Intelligence & Outreach Automation. Find, analyze, score, and contact high-potential business leads automatically.
               </p>
               <div className="flex gap-4">
-                {/* Real SVG Social Icons */}
                 <Link href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-fixer-primary transition-colors text-white" aria-label="LinkedIn">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
                 </Link>
@@ -366,7 +388,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Product Column */}
             <div>
               <h4 className="text-white font-bold mb-6">Product</h4>
               <ul className="space-y-3 text-sm">
@@ -380,7 +401,6 @@ export default function Home() {
               </ul>
             </div>
 
-            {/* Resources Column */}
             <div>
               <h4 className="text-white font-bold mb-6">Resources</h4>
               <ul className="space-y-3 text-sm">
@@ -392,7 +412,6 @@ export default function Home() {
               </ul>
             </div>
 
-            {/* Company & Support Column */}
             <div>
               <h4 className="text-white font-bold mb-6">Company</h4>
               <ul className="space-y-3 text-sm mb-8">

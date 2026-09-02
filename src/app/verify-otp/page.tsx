@@ -53,10 +53,9 @@ export default function VerifyOtpPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Verification failed");
 
-      // Save tokens securely in local storage
       localStorage.setItem('access_token', data.tokens.access);
       localStorage.setItem('refresh_token', data.tokens.refresh);
-      localStorage.removeItem('registration_email'); // Clean up
+      localStorage.removeItem('registration_email');
 
       if (data.requires_onboarding) {
         router.push("/onboarding");

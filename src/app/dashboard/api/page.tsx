@@ -4,7 +4,6 @@ import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 
-// Helper component for sleek code blocks
 const CodeBlock = ({ title, code }: { title?: string, code: string }) => (
   <div className="rounded-xl bg-[#0F172A] border border-gray-800 overflow-hidden my-4 shadow-lg">
     {title && (
@@ -21,7 +20,6 @@ const CodeBlock = ({ title, code }: { title?: string, code: string }) => (
   </div>
 );
 
-// Helper for Method Badges
 const MethodBadge = ({ method }: { method: "GET" | "POST" }) => (
   <span className={`text-xs font-bold px-2 py-1 rounded-md ${method === 'GET' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
     {method}

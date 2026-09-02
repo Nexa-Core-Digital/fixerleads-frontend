@@ -15,7 +15,6 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Fetch User Profile, Dashboard Stats, and Leads simultaneously
         const [userRes, statsRes, leadsRes] = await Promise.all([
           fetchApi('/api/users/me/'),
           fetchApi('/api/leads/dashboard_stats/'),
@@ -47,7 +46,6 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, []);
 
-  // Map dynamic backend data into the stats array (removed trend arrows)
   const stats = [
     {
       name: "Total Leads Generated",
