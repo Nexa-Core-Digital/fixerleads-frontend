@@ -72,7 +72,7 @@ export default function Navbar() {
     { name: 'Campaigns', href: '/dashboard/campaigns' },
     { name: 'Reports', href: '/dashboard/reports' },
     { name: 'Contacts', href: '/dashboard/contacts' },
-    { name: 'Billing', href: '/billing' },
+    { name: 'Billing', href: '/dashboard/billing' }, // Fixed route
     { name: 'Settings', href: '/dashboard/settings' },
     { name: 'API', href: '/dashboard/api' },
   ];
