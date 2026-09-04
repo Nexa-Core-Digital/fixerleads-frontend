@@ -30,6 +30,8 @@ export default function SettingsPage() {
   const [agentData, setAgentData] = useState({
     agency_name: "",
     sender_name: "",
+    service_type: "web_development",
+    service_description: "",
     target_niche: "",
     target_location: "",
     google_client_id: "",
@@ -52,6 +54,19 @@ export default function SettingsPage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
+  const SERVICE_OPTIONS = [
+    { value: "web_development", label: "Web & App Development" },
+    { value: "graphic_design", label: "Graphic Design & Branding (Logos, UI/UX)" },
+    { value: "seo_marketing", label: "SEO & Search Engine Optimization" },
+    { value: "social_media", label: "Social Media Marketing & Management" },
+    { value: "copywriting", label: "Copywriting & Content Strategy" },
+    { value: "video_production", label: "Video Editing & Motion Graphics" },
+    { value: "paid_ads", label: "Paid Advertising & PPC (Google & Meta Ads)" },
+    { value: "ai_automation", label: "AI Automation & Workflow Integration" },
+    { value: "sales_consulting", label: "B2B Sales Consulting & Operations" },
+    { value: "custom", label: "Custom Business Service" }
+  ];
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -90,6 +105,8 @@ export default function SettingsPage() {
             ...prev,
             agency_name: agent.agency_name || "",
             sender_name: agent.sender_name || "",
+            service_type: agent.service_type || "web_development",
+            service_description: agent.service_description || "",
             target_niche: agent.target_niche || "",
             target_location: agent.target_location || ""
           }));
@@ -113,7 +130,7 @@ export default function SettingsPage() {
     setProfileData({ ...profileData, [e.target.name]: e.target.value });
   };
 
-  const handleAgentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAgentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setAgentData({ ...agentData, [e.target.name]: e.target.value });
   };
 
@@ -189,7 +206,7 @@ export default function SettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save agent settings");
       
-      showMessage("success", "Agent credentials & configuration saved successfully!");
+      showMessage("success", "Agent credentials & multidimensional service profile saved!");
       setAgentData((prev) => ({
         ...prev,
         google_client_id: "",
@@ -233,7 +250,6 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
-      
       if (!res.ok) throw new Error(data.error || "Failed to change password.");
 
       showMessage("success", "Password updated successfully!");
@@ -262,14 +278,13 @@ export default function SettingsPage() {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <h1 className="text-2xl font-extrabold text-fixer-darkBg">Account Settings</h1>
             <p className="text-sm font-medium text-fixer-muted mt-1">
-              Manage your personal information, outreach agents, and security preferences.
+              Manage your personal information, specialized service offerings, outreach agents, and security credentials.
             </p>
           </div>
         </header>
 
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
           
-          {/* Global Alerts */}
           {globalMessage.text && (
             <div className={`px-4 py-3 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-4 border ${
               globalMessage.type === 'success' 
@@ -329,8 +344,6 @@ export default function SettingsPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
-                
-                {/* LOCKED FIELDS */}
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-bold text-gray-500 flex items-center gap-2">
                     Full Name (Identity)
@@ -350,14 +363,13 @@ export default function SettingsPage() {
                 <div>
                   <label className="block text-sm font-bold text-gray-500 flex items-center gap-2">
                     Username
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                   </label>
                   <input type="text" value={profileData.username} disabled className="mt-1 block w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 sm:text-sm cursor-not-allowed" />
                 </div>
 
                 <div className="sm:col-span-2 border-t border-gray-100 my-2"></div>
 
-                {/* EDITABLE FIELDS */}
                 <div>
                   <label className="block text-sm font-bold text-fixer-text">Job Title</label>
                   <input type="text" name="job_title" value={profileData.job_title} onChange={handleProfileChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" />
@@ -402,7 +414,6 @@ export default function SettingsPage() {
                   <label className="block text-sm font-bold text-fixer-text">Website URL</label>
                   <input type="url" name="website" value={profileData.website} onChange={handleProfileChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" />
                 </div>
-
               </div>
               
               <div className="pt-4 flex justify-end">
@@ -413,45 +424,86 @@ export default function SettingsPage() {
             </form>
           </div>
 
-          {/* Agent Settings Form (Google API Integration) */}
+          {/* Agent Settings Form (Multidimensional Services & Outreach Config) */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-200 bg-gray-50/50">
               <h2 className="text-lg font-bold text-fixer-darkBg flex items-center gap-2">
                 <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                Configure Agent Settings & Gmail API
+                Agent Lead Discovery & Service Engine
               </h2>
-              <p className="text-sm text-fixer-muted mt-1">Configure parameters and your Google Cloud OAuth2 credentials for automated outreach dispatching.</p>
+              <p className="text-sm text-fixer-muted mt-1">Configure your primary commercial service, agency identity, and Gmail API credentials.</p>
             </div>
             
             <form onSubmit={handleAgentSubmit} className="p-6 sm:p-8 space-y-6">
+              
+              {/* SECTION: Professional Service Matrix */}
+              <div className="bg-gradient-to-r from-purple-50/70 to-blue-50/70 p-5 rounded-xl border border-purple-100/80 space-y-4">
+                <h3 className="text-sm font-extrabold text-fixer-darkBg flex items-center gap-2">
+                  <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  Professional Service Definition
+                </h3>
+                <p className="text-xs text-fixer-muted leading-relaxed">
+                  Select your core professional offering. Anthropic Claude will analyze prospect websites, identify flaws related to this service, and generate customized pitches and audit reports.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">Primary Service Offering</label>
+                    <select
+                      name="service_type"
+                      value={agentData.service_type}
+                      onChange={handleAgentChange}
+                      className="block w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 sm:text-sm font-bold text-fixer-darkBg cursor-pointer"
+                    >
+                      {SERVICE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">Service Value Proposition (Optional)</label>
+                    <input
+                      type="text"
+                      name="service_description"
+                      value={agentData.service_description}
+                      onChange={handleAgentChange}
+                      placeholder="e.g. We design high-converting logos, brand kits, and UI redesigns."
+                      className="block w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 sm:text-sm text-fixer-text placeholder-gray-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION: Identity & Targets */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
-                
                 <div>
-                  <label className="block text-sm font-bold text-fixer-text">Agency Name</label>
-                  <input type="text" name="agency_name" value={agentData.agency_name} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="e.g. Your Agency Name" />
+                  <label className="block text-sm font-bold text-fixer-text">Agency / Business Name</label>
+                  <input type="text" name="agency_name" value={agentData.agency_name} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="e.g. Acme Studio" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-fixer-text">Sender Name</label>
-                  <input type="text" name="sender_name" value={agentData.sender_name} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="e.g. Mahfuz Alam" />
+                  <label className="block text-sm font-bold text-fixer-text">Sender Full Name</label>
+                  <input type="text" name="sender_name" value={agentData.sender_name} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="e.g. Sarah Connor" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-fixer-text">Target Niche</label>
-                  <input type="text" name="target_niche" value={agentData.target_niche} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="e.g. restaurants" />
+                  <label className="block text-sm font-bold text-fixer-text">Default Target Niche</label>
+                  <input type="text" name="target_niche" value={agentData.target_niche} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="e.g. real estate agencies" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-fixer-text">Target Location</label>
-                  <input type="text" name="target_location" value={agentData.target_location} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="e.g. Brooklyn, New York" />
+                  <label className="block text-sm font-bold text-fixer-text">Default Target Location</label>
+                  <input type="text" name="target_location" value={agentData.target_location} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" placeholder="e.g. Miami, FL" />
                 </div>
 
+                {/* Google Credentials */}
                 <div className="sm:col-span-2 border-t border-gray-100 my-1 pt-4">
                   <h3 className="text-sm font-extrabold text-fixer-darkBg flex items-center gap-2 mb-1">
                     <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                     Google OAuth2 Credentials (Encrypted)
                   </h3>
-                  <p className="text-xs text-fixer-muted">These credentials remain private and encrypted. Input them once or whenever you want to rotate them.</p>
+                  <p className="text-xs text-fixer-muted">Credentials remain encrypted in the database and are used for authenticated cold dispatching.</p>
                 </div>
 
                 <div className="sm:col-span-2">
@@ -468,7 +520,6 @@ export default function SettingsPage() {
                   <label className="block text-sm font-bold text-fixer-text">Google Refresh Token</label>
                   <input type="password" name="google_refresh_token" value={agentData.google_refresh_token} onChange={handleAgentChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm font-mono transition-colors text-fixer-text" placeholder="1//0gxxxxxxxxxxxxxxxx" />
                 </div>
-
               </div>
 
               {/* Instructions Dropdown */}
@@ -504,14 +555,14 @@ export default function SettingsPage() {
                         <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline">
                           Google Cloud Console
                         </a>
-                        , create a new project (e.g., <em>FixerLeads Outreach</em>), navigate to <strong>APIs & Services &gt; Library</strong>, search for <strong>Gmail API</strong>, and click <strong>Enable</strong>.
+                        , create a new project, navigate to <strong>APIs & Services &gt; Library</strong>, search for <strong>Gmail API</strong>, and click <strong>Enable</strong>.
                       </p>
                     </div>
 
                     <div>
                       <h4 className="font-extrabold text-fixer-darkBg mb-1">Step 2: Configure OAuth Consent Screen & Test Users</h4>
                       <p className="text-xs text-gray-600">
-                        Navigate to <strong>APIs & Services &gt; OAuth consent screen</strong>. Choose <strong>External</strong>, provide your App Name and Email, and continue. Under <strong>Test users</strong>, click <strong>+ Add Users</strong> and enter your sending Gmail/Workspace address.
+                        Navigate to <strong>APIs & Services &gt; OAuth consent screen</strong>. Choose <strong>External</strong>, provide your App Name and Email, and continue. Under <strong>Test users</strong>, click <strong>+ Add Users</strong> and enter your sending Gmail address.
                       </p>
                     </div>
 
@@ -538,10 +589,9 @@ export default function SettingsPage() {
                       </p>
                       <ol className="text-xs text-gray-600 list-decimal list-inside mt-1 space-y-1">
                         <li>Click the <strong>Settings icon (gear)</strong> at the top right, check <strong>Use your own OAuth credentials</strong>, and paste your <em>OAuth Client ID</em> & <em>OAuth Client Secret</em>.</li>
-                        <li>In the left column (Step 1), scroll to <strong>Gmail API v1</strong> and check <code className="bg-gray-100 px-1 py-0.5 rounded">https://mail.google.com/</code>.</li>
-                        <li>Click <strong>Authorize APIs</strong>, sign into your Google account, and grant full email permissions.</li>
-                        <li>In Step 2, click <strong>Exchange authorization code for tokens</strong>.</li>
-                        <li>Copy the generated <strong>Refresh token</strong> and paste all 3 values into the fields above!</li>
+                        <li>In Step 1, scroll to <strong>Gmail API v1</strong> and check <code className="bg-gray-100 px-1 py-0.5 rounded">https://mail.google.com/</code>.</li>
+                        <li>Click <strong>Authorize APIs</strong> and sign into your Google account.</li>
+                        <li>In Step 2, click <strong>Exchange authorization code for tokens</strong> and copy the <strong>Refresh token</strong>.</li>
                       </ol>
                     </div>
                   </div>
@@ -567,7 +617,6 @@ export default function SettingsPage() {
             </div>
             
             <form onSubmit={handlePasswordSubmit} className="p-6 sm:p-8 space-y-6">
-              
               <div className="max-w-xl space-y-5">
                 <div>
                   <label className="block text-sm font-bold text-fixer-text">Current Password</label>

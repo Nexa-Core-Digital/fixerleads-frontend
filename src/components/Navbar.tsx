@@ -6,6 +6,16 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { fetchApi } from '@/lib/api';
 
+const isTokenExpired = (token: string | null) => {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return Math.floor(Date.now() / 1000) >= payload.exp;
+  } catch (e) {
+    return true;
+  }
+};
+
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -15,7 +25,9 @@ export default function Navbar() {
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
-    const currentlyLoggedIn = !!token;
+    const expired = isTokenExpired(token);
+    const currentlyLoggedIn = !!token && !expired;
+    
     setIsLoggedIn(currentlyLoggedIn);
 
     if (currentlyLoggedIn) {
@@ -72,7 +84,7 @@ export default function Navbar() {
     { name: 'Campaigns', href: '/dashboard/campaigns' },
     { name: 'Reports', href: '/dashboard/reports' },
     { name: 'Contacts', href: '/dashboard/contacts' },
-    { name: 'Billing', href: '/dashboard/billing' }, // Fixed route
+    { name: 'Billing', href: '/dashboard/billing' },
     { name: 'Settings', href: '/dashboard/settings' },
     { name: 'API', href: '/dashboard/api' },
   ];

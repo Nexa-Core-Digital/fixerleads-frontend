@@ -42,9 +42,9 @@ export default function ReportsPage() {
     fetchReports();
   }, []);
 
-
+  // FIXED: Added 'email_drafted' to the filter list so newly drafted campaigns show up immediately.
   const reportLeads = leads.filter((lead) => 
-    ['report_ready', 'emailed', 'approved_to_send'].includes(lead.status) && lead.screenshot_path
+    ['report_ready', 'email_drafted', 'emailed', 'approved_to_send'].includes(lead.status) && lead.screenshot_path
   );
 
 
