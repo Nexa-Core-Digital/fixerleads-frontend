@@ -15,6 +15,9 @@ export default function LeadFinderPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Accordion Expand State
+  const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
+
   const [industryFilter, setIndustryFilter] = useState("");
   const [scoreFilter, setScoreFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -45,6 +48,11 @@ export default function LeadFinderPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Toggle Lead Accordion
+  const toggleLeadAccordion = (id: string) => {
+    setExpandedLeadId((prev) => (prev === id ? null : id));
+  };
 
   // SUBSCRIPTION CHECK
   const validateSubscription = () => {
@@ -177,6 +185,7 @@ export default function LeadFinderPage() {
               <option value="software">Software</option>
               <option value="agency">Agency</option>
               <option value="healthcare">Healthcare</option>
+              <option value="real estate">Real Estate</option>
             </select>
 
             <select value={scoreFilter} onChange={(e) => setScoreFilter(e.target.value)} className="bg-white border border-gray-200 text-fixer-text text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-fixer-primary focus:ring-1 focus:ring-fixer-primary font-medium cursor-pointer shadow-sm">
@@ -184,6 +193,7 @@ export default function LeadFinderPage() {
               <option value="10">10</option>
               <option value="9">9.0+</option>
               <option value="8">8.0+</option>
+              <option value="6">6.0+</option>
             </select>
 
             <button onClick={handleClearFilters} className="text-sm text-fixer-muted hover:text-fixer-primary font-medium ml-auto">
@@ -216,95 +226,253 @@ export default function LeadFinderPage() {
                       </td>
                     </tr>
                   ) : filteredLeads.length > 0 ? (
-                    filteredLeads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-gray-50 transition-colors group">
-                        
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-fixer-darkBg text-sm">{lead.name}</div>
-                          <div className="text-xs text-fixer-muted mt-1 flex items-center gap-1.5">
-                            <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{lead.category}</span>
-                            • {lead.location}
-                          </div>
-                        </td>
+                    filteredLeads.map((lead) => {
+                      const isExpanded = expandedLeadId === lead.id;
 
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1">
-                            {lead.email ? (
-                              <span className="text-sm text-fixer-text flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                                {lead.email}
+                      return (
+                        <tr key={lead.id} className="contents group">
+                          {/* Main Row */}
+                          <tr 
+                            onClick={() => toggleLeadAccordion(lead.id)}
+                            className={`hover:bg-blue-50/40 transition-colors cursor-pointer ${
+                              isExpanded ? "bg-blue-50/50" : ""
+                            }`}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs text-gray-400 transition-transform duration-200 ${isExpanded ? "rotate-90 text-fixer-primary" : ""}`}>
+                                  ▶
+                                </span>
+                                <div>
+                                  <div className="font-bold text-fixer-darkBg text-sm group-hover:text-fixer-primary transition-colors">
+                                    {lead.name}
+                                  </div>
+                                  <div className="text-xs text-fixer-muted mt-1 flex items-center gap-1.5 flex-wrap">
+                                    <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 font-medium">
+                                      {lead.category || "Service"}
+                                    </span>
+                                    <span>• {lead.location}</span>
+                                    {lead.audit_data?.tech_stack && (
+                                      <span className="bg-purple-50 text-purple-700 border border-purple-100 px-1.5 py-0.5 rounded text-[11px] font-semibold">
+                                        {lead.audit_data.tech_stack}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col gap-1">
+                                {lead.email ? (
+                                  <span className="text-sm text-fixer-text flex items-center gap-1.5 font-medium">
+                                    <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                    {lead.email}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-red-400 italic">No email found</span>
+                                )}
+                                {lead.phone && lead.phone !== "N/A" && (
+                                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                                    <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                                    {lead.phone}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
+                                lead.ai_score >= 8 ? 'bg-emerald-50 text-fixer-accent border-emerald-100' :
+                                lead.ai_score >= 6 ? 'bg-blue-50 text-fixer-primary border-blue-100' :
+                                'bg-red-50 text-red-600 border-red-200'
+                              }`}>
+                                {lead.ai_score !== null && lead.ai_score !== undefined ? `${lead.ai_score} / 10` : "Unscored"}
                               </span>
-                            ) : (
-                              <span className="text-xs text-red-400 italic">No email found</span>
-                            )}
-                          </div>
-                        </td>
+                            </td>
 
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
-                            lead.ai_score >= 9 ? 'bg-emerald-50 text-fixer-accent border-emerald-100' :
-                            lead.ai_score >= 7 ? 'bg-blue-50 text-fixer-primary border-blue-100' :
-                            'bg-yellow-50 text-yellow-700 border-yellow-200'
-                          }`}>
-                            {lead.ai_score} / 10
-                          </span>
-                        </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full capitalize ${
+                                lead.status === 'approved_to_send' ? 'bg-emerald-50 text-fixer-accent' : 
+                                lead.status === 'emailed' ? 'bg-purple-50 text-purple-700' : 
+                                lead.status === 'audited' ? 'bg-cyan-50 text-fixer-secondary' : 
+                                lead.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {lead.status ? lead.status.replace(/_/g, ' ') : 'New'}
+                              </span>
+                            </td>
 
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full capitalize ${
-                            lead.status === 'approved_to_send' ? 'bg-emerald-50 text-fixer-accent' : 
-                            lead.status === 'emailed' ? 'bg-purple-50 text-purple-700' : 
-                            lead.status === 'audited' ? 'bg-cyan-50 text-fixer-secondary' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {lead.status.replace(/_/g, ' ')}
-                          </span>
-                        </td>
+                            <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-2">
+                                {!lead.audited_at ? (
+                                  <button 
+                                    disabled={isProcessing}
+                                    onClick={() => executePipelineAction(lead.id, 'trigger_pdf')}
+                                    className="px-3 py-1.5 text-xs font-bold text-fixer-secondary bg-cyan-50 border border-cyan-100 rounded-lg hover:bg-cyan-100 transition-colors disabled:opacity-50"
+                                  >
+                                    Trigger Audit
+                                  </button>
+                                ) : !lead.email_drafted_at ? (
+                                  <button 
+                                    disabled={isProcessing}
+                                    onClick={() => executePipelineAction(lead.id, 'compose_draft')}
+                                    className="px-3 py-1.5 text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
+                                  >
+                                    Compose Draft
+                                  </button>
+                                ) : lead.status !== 'approved_to_send' && !lead.emailed_at ? (
+                                  <button 
+                                    disabled={isProcessing}
+                                    onClick={() => executePipelineAction(lead.id, 'approve_draft', 'PATCH')}
+                                    className="px-3 py-1.5 text-xs font-bold text-yellow-700 bg-yellow-50 border border-yellow-100 rounded-lg hover:bg-yellow-100 transition-colors disabled:opacity-50"
+                                  >
+                                    Approve Draft
+                                  </button>
+                                ) : !lead.emailed_at ? (
+                                  <button 
+                                    disabled={isProcessing}
+                                    onClick={() => executePipelineAction(lead.id, 'send_email')}
+                                    className="px-3 py-1.5 text-xs font-bold text-white bg-fixer-accent rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                                  >
+                                    Send Email
+                                  </button>
+                                ) : (
+                                  <span className="text-xs font-bold text-gray-400 px-3">Completed</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
 
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            
-                            {/* Feature 1: Manual Step-by-Step Logic */}
-                            {!lead.audited_at ? (
-                              <button 
-                                disabled={isProcessing}
-                                onClick={() => executePipelineAction(lead.id, 'trigger_pdf')}
-                                className="px-3 py-1.5 text-xs font-bold text-fixer-secondary bg-cyan-50 border border-cyan-100 rounded-lg hover:bg-cyan-100 transition-colors disabled:opacity-50"
-                              >
-                                Trigger Audit
-                              </button>
-                            ) : !lead.email_drafted_at ? (
-                              <button 
-                                disabled={isProcessing}
-                                onClick={() => executePipelineAction(lead.id, 'compose_draft')}
-                                className="px-3 py-1.5 text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
-                              >
-                                Compose Draft
-                              </button>
-                            ) : lead.status !== 'approved_to_send' && !lead.emailed_at ? (
-                              <button 
-                                disabled={isProcessing}
-                                onClick={() => executePipelineAction(lead.id, 'approve_draft', 'PATCH')}
-                                className="px-3 py-1.5 text-xs font-bold text-yellow-700 bg-yellow-50 border border-yellow-100 rounded-lg hover:bg-yellow-100 transition-colors disabled:opacity-50"
-                              >
-                                Approve Draft
-                              </button>
-                            ) : !lead.emailed_at ? (
-                              <button 
-                                disabled={isProcessing}
-                                onClick={() => executePipelineAction(lead.id, 'send_email')}
-                                className="px-3 py-1.5 text-xs font-bold text-white bg-fixer-accent rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50"
-                              >
-                                Send Email
-                              </button>
-                            ) : (
-                              <span className="text-xs font-bold text-gray-400 px-3">Completed</span>
-                            )}
-                            
-                          </div>
-                        </td>
+                          {/* Expanded Inspection Drawer */}
+                          {isExpanded && (
+                            <tr className="bg-slate-50 border-b border-gray-200">
+                              <td colSpan={5} className="p-6">
+                                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                  
+                                  {/* Header Info Banner */}
+                                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <h3 className="text-base font-extrabold text-fixer-darkBg">{lead.name}</h3>
+                                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
+                                          Site Status: <strong className="capitalize">{lead.site_status || "N/A"}</strong>
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-0.5">{lead.address || "Address not provided"}</p>
+                                    </div>
 
-                      </tr>
-                    ))
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      {lead.website && lead.website !== "N/A" && (
+                                        <a
+                                          href={lead.website}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 transition-colors"
+                                        >
+                                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                          Visit Website
+                                        </a>
+                                      )}
+                                      {lead.screenshot_path && (
+                                        <a
+                                          href={lead.screenshot_path}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200 transition-colors"
+                                        >
+                                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                          View Audit PDF
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Grid Details */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="bg-gray-50 p-3.5 rounded-lg border border-gray-100">
+                                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Identified Framework</span>
+                                      <p className="text-sm font-extrabold text-fixer-darkBg mt-1">
+                                        {lead.audit_data?.tech_stack || "Unknown / Not Detected"}
+                                      </p>
+                                    </div>
+
+                                    <div className="bg-gray-50 p-3.5 rounded-lg border border-gray-100">
+                                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Infrastructure Score</span>
+                                      <p className="text-sm font-extrabold text-fixer-primary mt-1">
+                                        {lead.audit_data?.score !== undefined ? `${lead.audit_data.score} / 100` : "N/A"}
+                                      </p>
+                                    </div>
+
+                                    <div className="bg-gray-50 p-3.5 rounded-lg border border-gray-100">
+                                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Google Reputation</span>
+                                      <p className="text-sm font-extrabold text-fixer-darkBg mt-1">
+                                        ★ {lead.rating || "0"} ({lead.reviews || "0"} reviews)
+                                      </p>
+                                    </div>
+
+                                    <div className="bg-gray-50 p-3.5 rounded-lg border border-gray-100">
+                                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">AI Evaluation Reason</span>
+                                      <p className="text-xs font-medium text-gray-700 mt-1 line-clamp-2" title={lead.ai_reason}>
+                                        {lead.ai_reason || "No evaluation notes available."}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Technical Issues & Optimization Bottlenecks */}
+                                  <div>
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                                      Detected Technical Issues & Optimization Gaps:
+                                    </h4>
+                                    {lead.audit_data?.issues && lead.audit_data.issues.length > 0 ? (
+                                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        {lead.audit_data.issues.map((issue: string, idx: number) => (
+                                          <li
+                                            key={idx}
+                                            className="text-xs font-medium text-red-700 bg-red-50/70 border border-red-100 rounded-md px-3 py-2 flex items-start gap-2"
+                                          >
+                                            <span className="text-red-500 font-bold shrink-0">•</span>
+                                            <span>{issue}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-md border border-emerald-100 font-medium">
+                                        ✔ No critical technical issues detected for this website.
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* AI Pitch & Subject Line Preview (If Composed) */}
+                                  {(lead.email_subject || lead.email_body) && (
+                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-purple-700">
+                                          Composed Outreach Pitch:
+                                        </h4>
+                                        <span className="text-[11px] font-semibold text-gray-400">Claude AI Generated</span>
+                                      </div>
+                                      {lead.email_subject && (
+                                        <p className="text-xs font-bold text-gray-900 mb-1.5">
+                                          <span className="text-gray-500 font-normal">Subject: </span>
+                                          {lead.email_subject}
+                                        </p>
+                                      )}
+                                      {lead.email_body && (
+                                        <div className="text-xs text-gray-700 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto pr-2 bg-white p-3 rounded border border-gray-100 font-mono">
+                                          {lead.email_body}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={5} className="px-6 py-8 text-center text-sm text-fixer-muted">

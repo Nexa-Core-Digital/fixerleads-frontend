@@ -36,9 +36,10 @@ export default function CampaignsPage() {
 
   const fetchCampaignData = async () => {
     try {
-      const [statsRes, leadsRes] = await Promise.all([
+      const [statsRes, leadsRes, campaignsRes] = await Promise.all([
         fetchApi('/api/leads/dashboard_stats/'),
-        fetchApi('/api/leads/')
+        fetchApi('/api/leads/'),
+        fetchApi('/api/campaigns/')
       ]);
 
       let backendStats = null;
@@ -46,9 +47,34 @@ export default function CampaignsPage() {
         backendStats = await statsRes.json();
       }
 
+      // 1. Pre-load actual backend campaigns to get names and real statuses
+      const campaignsMap = new Map();
+      if (campaignsRes.ok) {
+        const campaignsData = await campaignsRes.json();
+        campaignsData.forEach((c: any) => {
+          campaignsMap.set(c.id, {
+            id: c.id,
+            name: c.name,
+            hasName: !!c.name,
+            backendStatus: c.status, // 'running', 'completed', or 'failed'
+            status: 'Active', // Default visual status
+            scraped: 0,
+            rejected: 0, 
+            audited: 0,
+            reportsGenerated: 0, 
+            drafted: 0,
+            emailed: 0,
+            readyForPdf: 0,
+            readyForDraft: 0,
+            readyToApprove: 0,
+            readyToSend: 0
+          });
+        });
+      }
+
+      // 2. Map leads to aggregate the counts
       if (leadsRes.ok) {
         const leadsData = await leadsRes.json();
-        const campaignsMap = new Map();
         
         leadsData.forEach((lead: any) => {
           const cid = lead.campaign || 'unassigned';
@@ -57,7 +83,9 @@ export default function CampaignsPage() {
           if (!campaignsMap.has(cid)) {
             campaignsMap.set(cid, {
               id: cid,
-              name: `Outreach Campaign (${cid.slice(0,8)})`,
+              name: null,
+              hasName: false,
+              backendStatus: 'completed',
               status: 'Active',
               scraped: 0,
               rejected: 0, 
@@ -90,9 +118,21 @@ export default function CampaignsPage() {
           if (lead.status === 'approved_to_send') camp.readyToSend += 1;
         });
 
+        // 3. Resolve the actual final completion status to prevent infinite loaders
         const campaignsArray = Array.from(campaignsMap.values()).map((camp: any) => {
-          if (camp.emailed + camp.rejected === camp.scraped && camp.scraped > 0) {
+          const allProcessed = camp.scraped > 0 && (camp.emailed + camp.rejected === camp.scraped);
+          const pendingActions = camp.readyForPdf + camp.readyForDraft + camp.readyToApprove + camp.readyToSend;
+
+          if (camp.backendStatus === 'failed') {
+            camp.status = 'Failed';
+          } else if (allProcessed) {
             camp.status = 'Completed';
+          } else if (camp.backendStatus === 'completed' && pendingActions === 0) {
+            // FIX: If backend says it's done, and there are no manual actions pending, 
+            // force it to Completed even if some leads crashed silently in celery
+            camp.status = 'Completed';
+          } else {
+            camp.status = 'Active';
           }
           return camp;
         });
@@ -359,13 +399,19 @@ export default function CampaignsPage() {
                         <tr key={campaign.id} className="hover:bg-gray-50 transition-colors group">
                           
                           <td className="px-6 py-4">
-                            <div className="font-bold text-fixer-darkBg text-sm">{campaign.name}</div>
-                            <div className="text-xs text-fixer-muted mt-1 font-mono">{campaign.id}</div>
+                            <div className="font-bold text-fixer-darkBg text-sm">
+                              {campaign.hasName ? campaign.name : `Outreach Campaign (${campaign.id.slice(0,8)})`}
+                            </div>
+                            {!campaign.hasName && (
+                              <div className="text-xs text-fixer-muted mt-1 font-mono">{campaign.id}</div>
+                            )}
                           </td>
 
                           <td className="px-6 py-4">
                             <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${
-                              campaign.status === 'Active' ? 'bg-emerald-50 text-fixer-accent border-emerald-100' : 'bg-gray-100 text-gray-700 border-gray-200'
+                              campaign.status === 'Active' ? 'bg-emerald-50 text-fixer-accent border-emerald-100' : 
+                              campaign.status === 'Failed' ? 'bg-red-50 text-red-600 border-red-200' :
+                              'bg-gray-100 text-gray-700 border-gray-200'
                             }`}>
                               {campaign.status === 'Active' && <span className="w-1.5 h-1.5 rounded-full bg-fixer-accent animate-pulse"></span>}
                               {campaign.status}
@@ -461,8 +507,12 @@ export default function CampaignsPage() {
                                 <span className="text-xs font-bold text-gray-400">All Pipeline Actions Complete</span>
                               )}
 
-                              {/* NEW: Fallback indicator when waiting for backend processing */}
-                              {!hasAvailableActions && campaign.status !== 'Completed' && (
+                              {campaign.status === 'Failed' && (
+                                <span className="text-xs font-bold text-red-500">Pipeline Execution Failed</span>
+                              )}
+
+                              {/* Only show loading spinner if it is actually active and waiting for a background worker */}
+                              {!hasAvailableActions && campaign.status === 'Active' && (
                                 <span className="text-xs font-bold text-fixer-secondary flex items-center gap-1.5">
                                   <div className="w-3 h-3 border-2 border-fixer-secondary border-t-transparent rounded-full animate-spin"></div>
                                   Waiting for background tasks...

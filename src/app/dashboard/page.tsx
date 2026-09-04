@@ -3,38 +3,106 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { fetchApi } from "@/lib/api";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [recentLeads, setRecentLeads] = useState<any[]>([]);
+  const [activeCampaigns, setActiveCampaigns] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [userRes, statsRes, leadsRes] = await Promise.all([
+        const [userRes, statsRes, leadsRes, campaignsRes] = await Promise.all([
           fetchApi('/api/users/me/'),
           fetchApi('/api/leads/dashboard_stats/'),
-          fetchApi('/api/leads/')
+          fetchApi('/api/leads/'),
+          fetchApi('/api/campaigns/')
         ]);
 
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setUser(userData);
-        }
+        if (userRes.ok) setUser(await userRes.json());
         
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setDashboardStats(statsData);
-        }
-
+        let statsData = null;
+        if (statsRes.ok) statsData = await statsRes.json();
+        
+        let leadsData: any[] = [];
         if (leadsRes.ok) {
-          const leadsData = await leadsRes.json();
+          leadsData = await leadsRes.json();
           setRecentLeads(leadsData);
         }
+
+        // Sync campaign active status logic with the campaigns page
+        if (campaignsRes.ok) {
+          const campaignsData = await campaignsRes.json();
+          const campaignsMap = new Map();
+          
+          campaignsData.forEach((c: any) => {
+            campaignsMap.set(c.id, {
+              id: c.id,
+              name: c.name || `Outreach Campaign (${c.id.slice(0, 8)})`,
+              mode: c.mode,
+              niche: c.target_niche,
+              location: c.target_location,
+              backendStatus: c.status,
+              status: 'Active',
+              scraped: 0,
+              rejected: 0,
+              emailed: 0,
+              readyForPdf: 0,
+              readyForDraft: 0,
+              readyToApprove: 0,
+              readyToSend: 0
+            });
+          });
+
+          leadsData.forEach((lead: any) => {
+            const cid = lead.campaign;
+            if (!cid || !campaignsMap.has(cid)) return;
+            
+            const camp = campaignsMap.get(cid);
+            camp.scraped += 1;
+
+            if (['rejected', 'site_error', 'email_failed', 'no_email'].includes(lead.status)) {
+              camp.rejected += 1;
+            }
+            if (lead.status === 'emailed') camp.emailed += 1;
+            if (lead.status === 'audited') camp.readyForPdf += 1;
+            if (lead.status === 'report_ready') camp.readyForDraft += 1;
+            if (lead.status === 'email_drafted') camp.readyToApprove += 1;
+            if (lead.status === 'approved_to_send') camp.readyToSend += 1;
+          });
+
+          const resolvedCampaigns = Array.from(campaignsMap.values()).map((camp: any) => {
+            const allProcessed = camp.scraped > 0 && (camp.emailed + camp.rejected === camp.scraped);
+            const pendingActions = camp.readyForPdf + camp.readyForDraft + camp.readyToApprove + camp.readyToSend;
+
+            if (camp.backendStatus === 'failed') {
+              camp.status = 'Failed';
+            } else if (allProcessed) {
+              camp.status = 'Completed';
+            } else if (camp.backendStatus === 'completed' && pendingActions === 0) {
+              camp.status = 'Completed';
+            } else {
+              camp.status = 'Active';
+            }
+            return camp;
+          });
+
+          const activeCamps = resolvedCampaigns.filter(c => c.status === 'Active');
+          setActiveCampaigns(activeCamps);
+
+          // Override the backend stat with the newly calculated frontend active count
+          if (statsData) {
+            statsData.active_campaigns = activeCamps.length;
+          }
+        }
+
+        if (statsData) setDashboardStats(statsData);
 
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -95,19 +163,15 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-fixer-bg pb-12">
-      {/* Global Navbar */}
       <Navbar />
 
-      {/* Main Content wrapper with top padding to offset the fixed Navbar */}
       <div className="pt-20">
         
-        {/* Page Header */}
         <header className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 
-                {/* Dynamic Profile Image */}
                 <div className="h-16 w-16 rounded-full bg-gradient-to-r from-fixer-primary to-fixer-secondary p-0.5 shrink-0">
                   <div className="h-full w-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                     {user?.basic_info?.profile_picture ? (
@@ -148,13 +212,11 @@ export default function DashboardPage() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-          {/* Quick Actions Mobile (Visible only on small screens) */}
           <div className="sm:hidden flex gap-3 mb-6">
             <Link href="/dashboard/campaigns" className="flex-1 text-center bg-fixer-primary text-white py-2.5 rounded-lg text-sm font-bold shadow-md">New Campaign</Link>
             <Link href="/dashboard/reports" className="flex-1 text-center bg-white border border-gray-200 text-fixer-text py-2.5 rounded-lg text-sm font-bold shadow-sm">Reports</Link>
           </div>
 
-          {/* Overview Stats Grid */}
           <div className="mb-8">
             <h2 className="text-lg font-bold text-fixer-darkBg mb-4">Overview</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -172,92 +234,134 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Main Content Area: Charts & Tables */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            {/* Recent Leads Table */}
-            <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white">
-                <h3 className="text-lg font-bold text-fixer-darkBg">Recently Captured Leads</h3>
-                <Link href="/dashboard/leads" className="text-sm font-bold text-fixer-primary hover:text-fixer-primaryHover">View all</Link>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[600px]">
-                  <thead>
-                    <tr className="bg-gray-50 text-xs uppercase tracking-wider text-fixer-muted font-bold">
-                      <th className="px-6 py-4 border-b border-gray-100">Company Name</th>
-                      <th className="px-6 py-4 border-b border-gray-100">Location</th>
-                      <th className="px-6 py-4 border-b border-gray-100">AI Score</th>
-                      <th className="px-6 py-4 border-b border-gray-100">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {recentLeads.length > 0 ? (
-                      recentLeads.slice(0, 5).map((row: any, i: number) => (
-                        <tr key={i} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 font-bold text-fixer-darkBg text-sm">{row.name}</td>
-                          <td className="px-6 py-4 text-fixer-muted text-sm">{row.location}</td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-fixer-accent border border-emerald-100">
-                              {row.ai_score} / 10
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 text-xs font-bold capitalize ${
-                              row.status === 'approved_to_send' ? 'text-fixer-primary' : 
-                              row.status === 'emailed' ? 'text-purple-600' : 
-                              row.status === 'audited' ? 'text-fixer-secondary' : 'text-orange-500'
-                            }`}>
-                              <span className={`w-2 h-2 rounded-full ${
-                                row.status === 'approved_to_send' ? 'bg-fixer-primary' : 
-                                row.status === 'emailed' ? 'bg-purple-600' : 
-                                row.status === 'audited' ? 'bg-fixer-secondary' : 'bg-orange-500 animate-pulse'
-                              }`}></span>
-                              {row.status.replace(/_/g, ' ')}
-                            </span>
+            {/* Left Column: Recent Leads & Active Campaigns */}
+            <div className="lg:col-span-2 space-y-8">
+              
+              {/* Recent Leads Table */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white">
+                  <h3 className="text-lg font-bold text-fixer-darkBg">Recently Captured Leads</h3>
+                  <Link href="/dashboard/leads" className="text-sm font-bold text-fixer-primary hover:text-fixer-primaryHover">View all</Link>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[600px]">
+                    <thead>
+                      <tr className="bg-gray-50 text-xs uppercase tracking-wider text-fixer-muted font-bold">
+                        <th className="px-6 py-4 border-b border-gray-100">Company Name</th>
+                        <th className="px-6 py-4 border-b border-gray-100">Location</th>
+                        <th className="px-6 py-4 border-b border-gray-100">AI Score</th>
+                        <th className="px-6 py-4 border-b border-gray-100">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {recentLeads.length > 0 ? (
+                        recentLeads.slice(0, 5).map((row: any, i: number) => (
+                          <tr 
+                            key={i} 
+                            onClick={() => router.push('/dashboard/leads')}
+                            className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                          >
+                            <td className="px-6 py-4 font-bold text-fixer-darkBg text-sm group-hover:text-fixer-primary transition-colors">{row.name}</td>
+                            <td className="px-6 py-4 text-fixer-muted text-sm">{row.location}</td>
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-fixer-accent border border-emerald-100">
+                                {row.ai_score !== null ? `${row.ai_score} / 10` : "Unscored"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center gap-1.5 text-xs font-bold capitalize ${
+                                row.status === 'approved_to_send' ? 'text-fixer-primary' : 
+                                row.status === 'emailed' ? 'text-purple-600' : 
+                                row.status === 'audited' ? 'text-fixer-secondary' : 
+                                row.status === 'rejected' ? 'text-red-500' : 'text-orange-500'
+                              }`}>
+                                <span className={`w-2 h-2 rounded-full ${
+                                  row.status === 'approved_to_send' ? 'bg-fixer-primary' : 
+                                  row.status === 'emailed' ? 'bg-purple-600' : 
+                                  row.status === 'audited' ? 'bg-fixer-secondary' : 
+                                  row.status === 'rejected' ? 'bg-red-500' : 'bg-orange-500 animate-pulse'
+                                }`}></span>
+                                {row.status.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-8 text-center text-sm text-fixer-muted">
+                            No leads generated yet. Start a search to capture leads!
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-fixer-muted">
-                          No leads generated yet. Start a search to capture leads!
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Quick Setup / System Status Card */}
-            <div className="bg-fixer-darkBg rounded-2xl shadow-xl border border-gray-800 p-6 relative overflow-hidden h-fit">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-fixer-primary/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
-              
-              <h3 className="text-lg font-bold text-white mb-6 relative z-10">System Status</h3>
-              
-              <div className="space-y-6 relative z-10">
-                <div>
-                  <div className="flex justify-between text-sm font-bold mb-2">
-                    <span className="text-gray-300">API Credit Usage</span>
-                    <span className="text-white">{dashboardStats?.system_status?.usage_percentage || 0}%</span>
-                  </div>
-                  <div className="w-full bg-gray-800 rounded-full h-2">
-                    <div 
-                      className="bg-fixer-secondary h-2 rounded-full" 
-                      style={{ width: `${dashboardStats?.system_status?.usage_percentage || 0}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-2">
-                    {dashboardStats?.system_status?.api_limit - (dashboardStats?.system_status?.api_used || 0)} / {dashboardStats?.system_status?.api_limit || 1000} scrapes remaining this cycle
-                  </p>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-gray-800 relative z-10">
-                <button className="w-full bg-white text-fixer-darkBg font-bold py-2.5 rounded-lg shadow-sm hover:bg-gray-50 transition-colors">
-                  Upgrade Plan
-                </button>
+              {/* Active Campaigns List */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white">
+                  <h3 className="text-lg font-bold text-fixer-darkBg">Active Processing Campaigns</h3>
+                  <Link href="/dashboard/campaigns" className="text-sm font-bold text-fixer-primary hover:text-fixer-primaryHover">View Pipelines</Link>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {activeCampaigns.length > 0 ? (
+                    activeCampaigns.map((camp: any) => (
+                      <div key={camp.id} onClick={() => router.push('/dashboard/campaigns')} className="px-6 py-5 hover:bg-gray-50 transition-colors cursor-pointer group flex items-center justify-between">
+                        <div>
+                          <h4 className="font-bold text-sm text-fixer-darkBg group-hover:text-fixer-primary transition-colors">{camp.name}</h4>
+                          <p className="text-xs text-fixer-muted mt-1">
+                            {camp.niche} • {camp.location} • <span className="capitalize">{camp.mode} Mode</span>
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-fixer-accent border border-emerald-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-fixer-accent animate-pulse"></span>
+                          Running
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-6 py-8 text-center text-sm text-fixer-muted">
+                      No active campaigns. Your workers are idle.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Column: System Status */}
+            <div>
+              <div className="bg-fixer-darkBg rounded-2xl shadow-xl border border-gray-800 p-6 relative overflow-hidden h-fit">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-fixer-primary/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+                
+                <h3 className="text-lg font-bold text-white mb-6 relative z-10">System Status</h3>
+                
+                <div className="space-y-6 relative z-10">
+                  <div>
+                    <div className="flex justify-between text-sm font-bold mb-2">
+                      <span className="text-gray-300">API Credit Usage</span>
+                      <span className="text-white">{dashboardStats?.system_status?.usage_percentage || 0}%</span>
+                    </div>
+                    <div className="w-full bg-gray-800 rounded-full h-2">
+                      <div 
+                        className="bg-fixer-secondary h-2 rounded-full" 
+                        style={{ width: `${dashboardStats?.system_status?.usage_percentage || 0}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">
+                      {(dashboardStats?.system_status?.api_limit || 0) - (dashboardStats?.system_status?.api_used || 0)} / {dashboardStats?.system_status?.api_limit || 1000} scrapes remaining this cycle
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-gray-800 relative z-10">
+                  <Link href="/dashboard/billing" className="block text-center w-full bg-white text-fixer-darkBg font-bold py-2.5 rounded-lg shadow-sm hover:bg-gray-50 transition-colors">
+                    Upgrade Plan
+                  </Link>
+                </div>
               </div>
             </div>
 
