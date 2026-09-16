@@ -49,12 +49,10 @@ export default function LeadFinderPage() {
     fetchData();
   }, []);
 
-  // Toggle Lead Accordion
   const toggleLeadAccordion = (id: string) => {
     setExpandedLeadId((prev) => (prev === id ? null : id));
   };
 
-  // SUBSCRIPTION CHECK
   const validateSubscription = () => {
     if (!dashboardStats) {
       showToast("Agent access denied. Please activate a subscription plan.", "error");
@@ -69,7 +67,6 @@ export default function LeadFinderPage() {
     return true;
   };
 
-  // INDIVIDUAL MANUAL PIPELINE ACTIONS
   const executePipelineAction = async (leadId: string, endpoint: string, method: string = 'POST') => {
     if (!validateSubscription()) return;
     setIsProcessing(true);
@@ -87,12 +84,18 @@ export default function LeadFinderPage() {
     }
   };
 
-  // Client-side filtering logic
   const filteredLeads = leads.filter((lead) => {
     if (industryFilter && !lead.category?.toLowerCase().includes(industryFilter.toLowerCase())) return false;
     if (scoreFilter && lead.ai_score < parseInt(scoreFilter)) return false;
     if (statusFilter && lead.status !== statusFilter) return false;
-    if (keyword && !lead.name?.toLowerCase().includes(keyword.toLowerCase())) return false;
+    
+    if (keyword) {
+      const kw = keyword.toLowerCase();
+      const matchesName = lead.name?.toLowerCase().includes(kw);
+      const matchesCompany = lead.company_name?.toLowerCase().includes(kw);
+      if (!matchesName && !matchesCompany) return false;
+    }
+    
     if (location && !lead.location?.toLowerCase().includes(location.toLowerCase())) return false;
     return true;
   });
@@ -211,7 +214,7 @@ export default function LeadFinderPage() {
               <table className="w-full text-left border-collapse min-w-[1000px]">
                 <thead>
                   <tr className="bg-white text-xs uppercase tracking-wider text-fixer-muted font-bold border-b border-gray-200">
-                    <th className="px-6 py-4">Business Info</th>
+                    <th className="px-6 py-4">Business / Lead Info</th>
                     <th className="px-6 py-4">Contact Details</th>
                     <th className="px-6 py-4">AI Score</th>
                     <th className="px-6 py-4">Status</th>
@@ -245,14 +248,14 @@ export default function LeadFinderPage() {
                                 </span>
                                 <div>
                                   <div className="font-bold text-fixer-darkBg text-sm group-hover:text-fixer-primary transition-colors">
-                                    {lead.name}
+                                    {lead.name} {lead.company_name && <span className="text-gray-400 font-normal">(@ {lead.company_name})</span>}
                                   </div>
                                   <div className="text-xs text-fixer-muted mt-1 flex items-center gap-1.5 flex-wrap">
                                     <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 font-medium">
-                                      {lead.category || "Service"}
+                                      {lead.job_title || lead.category || "Service"}
                                     </span>
                                     <span>• {lead.location}</span>
-                                    {lead.audit_data?.tech_stack && (
+                                    {lead.audit_data?.tech_stack && lead.audit_data.tech_stack !== "Unknown" && (
                                       <span className="bg-purple-50 text-purple-700 border border-purple-100 px-1.5 py-0.5 rounded text-[11px] font-semibold">
                                         {lead.audit_data.tech_stack}
                                       </span>
@@ -269,8 +272,13 @@ export default function LeadFinderPage() {
                                     <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                                     {lead.email}
                                   </span>
+                                ) : lead.linkedin_url ? (
+                                  <span className="text-xs font-semibold text-[#0A66C2] flex items-center gap-1.5">
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                                    LinkedIn Profile Found
+                                  </span>
                                 ) : (
-                                  <span className="text-xs text-red-400 italic">No email found</span>
+                                  <span className="text-xs text-red-400 italic">No contact found</span>
                                 )}
                                 {lead.phone && lead.phone !== "N/A" && (
                                   <span className="text-xs text-gray-500 flex items-center gap-1.5">
@@ -294,6 +302,7 @@ export default function LeadFinderPage() {
                             <td className="px-6 py-4">
                               <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full capitalize ${
                                 lead.status === 'approved_to_send' ? 'bg-emerald-50 text-fixer-accent' : 
+                                lead.status === 'pitch_ready' ? 'bg-[#e0f0ff] text-[#0A66C2]' : 
                                 lead.status === 'emailed' ? 'bg-purple-50 text-purple-700' : 
                                 lead.status === 'audited' ? 'bg-cyan-50 text-fixer-secondary' : 
                                 lead.status === 'rejected' ? 'bg-red-50 text-red-600' :
@@ -305,7 +314,7 @@ export default function LeadFinderPage() {
 
                             <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-2">
-                                {!lead.audited_at ? (
+                                {!lead.audited_at && !lead.linkedin_url ? (
                                   <button 
                                     disabled={isProcessing}
                                     onClick={() => executePipelineAction(lead.id, 'trigger_pdf')}
@@ -313,7 +322,7 @@ export default function LeadFinderPage() {
                                   >
                                     Trigger Audit
                                   </button>
-                                ) : !lead.email_drafted_at ? (
+                                ) : !lead.email_drafted_at && lead.status !== 'pitch_ready' ? (
                                   <button 
                                     disabled={isProcessing}
                                     onClick={() => executePipelineAction(lead.id, 'compose_draft')}
@@ -321,7 +330,7 @@ export default function LeadFinderPage() {
                                   >
                                     Compose Draft
                                   </button>
-                                ) : lead.status !== 'approved_to_send' && !lead.emailed_at ? (
+                                ) : lead.status !== 'approved_to_send' && !lead.emailed_at && lead.email ? (
                                   <button 
                                     disabled={isProcessing}
                                     onClick={() => executePipelineAction(lead.id, 'approve_draft', 'PATCH')}
@@ -329,7 +338,7 @@ export default function LeadFinderPage() {
                                   >
                                     Approve Draft
                                   </button>
-                                ) : !lead.emailed_at ? (
+                                ) : lead.status === 'approved_to_send' && lead.email ? (
                                   <button 
                                     disabled={isProcessing}
                                     onClick={() => executePipelineAction(lead.id, 'send_email')}
@@ -337,9 +346,9 @@ export default function LeadFinderPage() {
                                   >
                                     Send Email
                                   </button>
-                                ) : (
-                                  <span className="text-xs font-bold text-gray-400 px-3">Completed</span>
-                                )}
+                                ) : lead.status === 'pitch_ready' || lead.status === 'emailed' ? (
+                                  <span className="text-xs font-bold text-gray-400 px-3">Pipeline Complete</span>
+                                ) : null}
                               </div>
                             </td>
                           </tr>
@@ -354,10 +363,14 @@ export default function LeadFinderPage() {
                                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
                                     <div>
                                       <div className="flex items-center gap-2">
-                                        <h3 className="text-base font-extrabold text-fixer-darkBg">{lead.name}</h3>
-                                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
-                                          Site Status: <strong className="capitalize">{lead.site_status || "N/A"}</strong>
-                                        </span>
+                                        <h3 className="text-base font-extrabold text-fixer-darkBg">
+                                          {lead.name} {lead.company_name && <span className="text-gray-400 font-normal">(@ {lead.company_name})</span>}
+                                        </h3>
+                                        {lead.site_status && (
+                                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
+                                            Site Status: <strong className="capitalize">{lead.site_status}</strong>
+                                          </span>
+                                        )}
                                       </div>
                                       <p className="text-xs text-gray-500 mt-0.5">{lead.address || "Address not provided"}</p>
                                     </div>
@@ -372,6 +385,17 @@ export default function LeadFinderPage() {
                                         >
                                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                           Visit Website
+                                        </a>
+                                      )}
+                                      {lead.linkedin_url && lead.linkedin_url !== "N/A" && (
+                                        <a
+                                          href={lead.linkedin_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 text-xs font-bold text-white hover:bg-[#084e96] bg-[#0A66C2] px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                                        >
+                                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                                          Message on LinkedIn
                                         </a>
                                       )}
                                       {lead.screenshot_path && (
@@ -420,49 +444,100 @@ export default function LeadFinderPage() {
                                   </div>
 
                                   {/* Technical Issues & Optimization Bottlenecks */}
-                                  <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                                      Detected Technical Issues & Optimization Gaps:
-                                    </h4>
-                                    {lead.audit_data?.issues && lead.audit_data.issues.length > 0 ? (
-                                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        {lead.audit_data.issues.map((issue: string, idx: number) => (
-                                          <li
-                                            key={idx}
-                                            className="text-xs font-medium text-red-700 bg-red-50/70 border border-red-100 rounded-md px-3 py-2 flex items-start gap-2"
-                                          >
-                                            <span className="text-red-500 font-bold shrink-0">•</span>
-                                            <span>{issue}</span>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    ) : (
-                                      <p className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-md border border-emerald-100 font-medium">
-                                        ✔ No critical technical issues detected for this website.
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  {/* AI Pitch & Subject Line Preview (If Composed) */}
-                                  {(lead.email_subject || lead.email_body) && (
-                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <h4 className="text-xs font-bold uppercase tracking-wider text-purple-700">
-                                          Composed Outreach Pitch:
-                                        </h4>
-                                        <span className="text-[11px] font-semibold text-gray-400">Claude AI Generated</span>
-                                      </div>
-                                      {lead.email_subject && (
-                                        <p className="text-xs font-bold text-gray-900 mb-1.5">
-                                          <span className="text-gray-500 font-normal">Subject: </span>
-                                          {lead.email_subject}
+                                  {lead.audit_data?.issues !== undefined && lead.audit_data.source !== 'linkedin_serper' && (
+                                    <div>
+                                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                                        Detected Technical Issues & Optimization Gaps:
+                                      </h4>
+                                      {lead.audit_data.issues.length > 0 ? (
+                                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                          {lead.audit_data.issues.map((issue: string, idx: number) => (
+                                            <li
+                                              key={idx}
+                                              className="text-xs font-medium text-red-700 bg-red-50/70 border border-red-100 rounded-md px-3 py-2 flex items-start gap-2"
+                                            >
+                                              <span className="text-red-500 font-bold shrink-0">•</span>
+                                              <span>{issue}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      ) : (
+                                        <p className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-md border border-emerald-100 font-medium">
+                                          ✔ No critical technical issues detected for this prospect.
                                         </p>
                                       )}
-                                      {lead.email_body && (
-                                        <div className="text-xs text-gray-700 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto pr-2 bg-white p-3 rounded border border-gray-100 font-mono">
-                                          {lead.email_body}
+                                    </div>
+                                  )}
+
+                                  {/* AI Pitch & Subject Line Preview (If Composed) */}
+                                  {(lead.email_subject || lead.email_body || lead.connection_note || lead.linkedin_message) && (
+                                    <div className="grid grid-cols-1 gap-4">
+                                      
+                                      {/* LinkedIn Pitch Display */}
+                                      {(lead.connection_note || lead.linkedin_message) && (
+                                        <div className="bg-[#f3f2ef] rounded-lg p-5 border border-[#e0dfdc] shadow-sm">
+                                          <div className="flex items-center justify-between mb-5 border-b border-[#e0dfdc] pb-3">
+                                            <h4 className="text-sm font-extrabold text-[#0A66C2] flex items-center gap-2">
+                                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                                              LinkedIn Social Pitch
+                                            </h4>
+                                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Claude AI Generated</span>
+                                          </div>
+                                          
+                                          {lead.connection_note && (
+                                            <div className="mb-5">
+                                              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">Connection Note (&lt;300 chars):</span>
+                                              <div className="text-sm text-gray-800 bg-white p-4 rounded-xl border border-[#e0dfdc] shadow-sm font-sans relative">
+                                                {lead.connection_note}
+                                                <div className="absolute bottom-2 right-3 text-[10px] text-gray-400 font-mono">
+                                                  {lead.connection_note.length} / 300
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+                                          
+                                          {lead.linkedin_message && (
+                                            <div>
+                                              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">Follow-up Direct Message / InMail:</span>
+                                              <div className="text-sm text-gray-800 whitespace-pre-line leading-relaxed max-h-64 overflow-y-auto bg-white p-5 rounded-xl border border-[#e0dfdc] shadow-sm font-sans">
+                                                {lead.linkedin_message}
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
+
+                                      {/* Standard Email Display */}
+                                      {(lead.email_subject || lead.email_body) && (
+                                        <div className="bg-gray-50 rounded-lg p-5 border border-gray-200 shadow-sm mt-2">
+                                          <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-3">
+                                            <h4 className="text-sm font-extrabold text-purple-700 flex items-center gap-2">
+                                              <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                              Email Outreach Pitch
+                                            </h4>
+                                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Claude AI Generated</span>
+                                          </div>
+
+                                          {lead.email_subject && (
+                                            <div className="mb-4">
+                                              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">Subject Line:</span>
+                                              <p className="text-sm font-bold text-gray-900 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                {lead.email_subject}
+                                              </p>
+                                            </div>
+                                          )}
+
+                                          {lead.email_body && (
+                                            <div>
+                                              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">Email Body:</span>
+                                              <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed max-h-64 overflow-y-auto bg-white p-5 rounded-lg border border-gray-200 shadow-sm font-mono">
+                                                {lead.email_body}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
                                     </div>
                                   )}
 

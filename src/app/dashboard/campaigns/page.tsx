@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 interface DashboardStats {
   total_leads: number;
   emails_sent: number;
+  linkedin_leads: number;
   ai_score_average: number;
   active_campaigns: number;
   system_status: {
@@ -26,6 +27,7 @@ export default function CampaignsPage() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<'google_maps' | 'linkedin'>('google_maps');
   
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -47,7 +49,6 @@ export default function CampaignsPage() {
         backendStats = await statsRes.json();
       }
 
-      // 1. Pre-load actual backend campaigns to get names and real statuses
       const campaignsMap = new Map();
       if (campaignsRes.ok) {
         const campaignsData = await campaignsRes.json();
@@ -55,9 +56,10 @@ export default function CampaignsPage() {
           campaignsMap.set(c.id, {
             id: c.id,
             name: c.name,
+            source: c.source || 'google_maps',
             hasName: !!c.name,
-            backendStatus: c.status, // 'running', 'completed', or 'failed'
-            status: 'Active', // Default visual status
+            backendStatus: c.status,
+            status: 'Active',
             scraped: 0,
             rejected: 0, 
             audited: 0,
@@ -72,7 +74,6 @@ export default function CampaignsPage() {
         });
       }
 
-      // 2. Map leads to aggregate the counts
       if (leadsRes.ok) {
         const leadsData = await leadsRes.json();
         
@@ -84,6 +85,7 @@ export default function CampaignsPage() {
             campaignsMap.set(cid, {
               id: cid,
               name: null,
+              source: 'google_maps',
               hasName: false,
               backendStatus: 'completed',
               status: 'Active',
@@ -107,18 +109,18 @@ export default function CampaignsPage() {
             camp.rejected += 1;
           }
 
-          if (['audited', 'report_ready', 'email_drafted', 'approved_to_send', 'emailed'].includes(lead.status)) camp.audited += 1;
-          if (['report_ready', 'email_drafted', 'approved_to_send', 'emailed'].includes(lead.status)) camp.reportsGenerated += 1;
-          if (['email_drafted', 'approved_to_send', 'emailed'].includes(lead.status)) camp.drafted += 1;
+          if (['audited', 'report_ready', 'email_drafted', 'pitch_ready', 'approved_to_send', 'emailed'].includes(lead.status)) camp.audited += 1;
+          if (['report_ready', 'email_drafted', 'pitch_ready', 'approved_to_send', 'emailed'].includes(lead.status)) camp.reportsGenerated += 1;
+          if (['email_drafted', 'pitch_ready', 'approved_to_send', 'emailed'].includes(lead.status)) camp.drafted += 1;
           if (lead.status === 'emailed') camp.emailed += 1;
 
           if (lead.status === 'audited') camp.readyForPdf += 1;
-          if (lead.status === 'report_ready') camp.readyForDraft += 1;
+          // Updated to support LinkedIn drafts
+          if (lead.status === 'report_ready' || (lead.status === 'new' && camp.source === 'linkedin')) camp.readyForDraft += 1;
           if (lead.status === 'email_drafted') camp.readyToApprove += 1;
           if (lead.status === 'approved_to_send') camp.readyToSend += 1;
         });
 
-        // 3. Resolve the actual final completion status to prevent infinite loaders
         const campaignsArray = Array.from(campaignsMap.values()).map((camp: any) => {
           const allProcessed = camp.scraped > 0 && (camp.emailed + camp.rejected === camp.scraped);
           const pendingActions = camp.readyForPdf + camp.readyForDraft + camp.readyToApprove + camp.readyToSend;
@@ -128,8 +130,6 @@ export default function CampaignsPage() {
           } else if (allProcessed) {
             camp.status = 'Completed';
           } else if (camp.backendStatus === 'completed' && pendingActions === 0) {
-            // FIX: If backend says it's done, and there are no manual actions pending, 
-            // force it to Completed even if some leads crashed silently in celery
             camp.status = 'Completed';
           } else {
             camp.status = 'Active';
@@ -182,7 +182,8 @@ export default function CampaignsPage() {
     try {
       const res = await fetchApi('/api/leads/start_campaign/', {
         method: 'POST',
-        body: JSON.stringify({ mode })
+        // Send the selected source to the backend
+        body: JSON.stringify({ mode, source: selectedSource })
       });
       
       if (!res.ok) {
@@ -196,7 +197,7 @@ export default function CampaignsPage() {
         throw new Error(errorMessage);
       }
       
-      showToast(`Campaign started in ${mode.toUpperCase()} mode! Background workers are scraping leads.`, "success");
+      showToast(`Campaign started via ${selectedSource === 'linkedin' ? 'LinkedIn' : 'Google Maps'} in ${mode.toUpperCase()} mode!`, "success");
       setIsModalOpen(false);
       fetchCampaignData();
     } catch (error: any) {
@@ -270,8 +271,29 @@ export default function CampaignsPage() {
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             <h2 className="text-2xl font-extrabold text-fixer-darkBg mb-2">Deploy New Campaign</h2>
-            <p className="text-sm text-fixer-muted mb-6">Choose how you want our agents to process your leads.</p>
+            <p className="text-sm text-fixer-muted mb-6">Select your lead source and how agents process them.</p>
             
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-fixer-darkBg mb-3">Lead Discovery Source</label>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setSelectedSource('google_maps')} 
+                  className={`flex-1 py-3 px-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1 ${selectedSource === 'google_maps' ? 'border-fixer-primary bg-blue-50 text-fixer-primary' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  Google Maps
+                </button>
+                <button 
+                  onClick={() => setSelectedSource('linkedin')} 
+                  className={`flex-1 py-3 px-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1 ${selectedSource === 'linkedin' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                >
+                  <svg className="w-4 h-4 mt-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                  LinkedIn X-Ray
+                </button>
+              </div>
+            </div>
+
+            <label className="block text-sm font-bold text-fixer-darkBg mb-3 border-t border-gray-100 pt-4">Execution Mode</label>
             <div className="space-y-4">
               <button 
                 onClick={() => handleStartCampaign('manual')}
@@ -306,7 +328,7 @@ export default function CampaignsPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-extrabold text-fixer-darkBg">Email Campaigns</h1>
+                <h1 className="text-2xl font-extrabold text-fixer-darkBg">Outreach Campaigns</h1>
                 <p className="text-sm font-medium text-fixer-muted mt-1">
                   Track your automated outreach sequences and pipeline statuses.
                 </p>
@@ -326,17 +348,31 @@ export default function CampaignsPage() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8 max-w-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8 max-w-4xl">
             <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-fixer-primary">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                 </div>
-                <h3 className="text-sm font-bold text-fixer-muted">Total Emails Sent</h3>
+                <h3 className="text-sm font-bold text-fixer-muted">Emails Sent</h3>
               </div>
               <div className="flex items-baseline gap-2">
                 <p className="text-3xl font-extrabold text-fixer-darkBg">
                   {dashboardStats?.emails_sent || "0"}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-700">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                </div>
+                <h3 className="text-sm font-bold text-fixer-muted">LinkedIn Leads</h3>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-extrabold text-fixer-darkBg">
+                  {dashboardStats?.linkedin_leads || "0"}
                 </p>
               </div>
             </div>
@@ -399,6 +435,16 @@ export default function CampaignsPage() {
                         <tr key={campaign.id} className="hover:bg-gray-50 transition-colors group">
                           
                           <td className="px-6 py-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              {campaign.source === 'linkedin' ? (
+                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                                  LinkedIn
+                                </span>
+                              ) : (
+                                <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Maps</span>
+                              )}
+                            </div>
                             <div className="font-bold text-fixer-darkBg text-sm">
                               {campaign.hasName ? campaign.name : `Outreach Campaign (${campaign.id.slice(0,8)})`}
                             </div>
@@ -422,7 +468,7 @@ export default function CampaignsPage() {
                             <div className="w-full">
                               <div className="flex justify-between text-xs font-bold text-fixer-muted mb-2">
                                 <span>Pipeline Flow</span>
-                                <span className="text-fixer-primary">{Math.round((campaign.emailed / (campaign.scraped || 1)) * 100) || 0}% Emailed</span>
+                                <span className="text-fixer-primary">{Math.round((campaign.emailed / (campaign.scraped || 1)) * 100) || 0}% Emailed/Pitched</span>
                               </div>
                               
                               <div className="flex items-center gap-4 text-xs font-medium">
@@ -454,7 +500,7 @@ export default function CampaignsPage() {
                                   <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
                                     <div className="bg-fixer-accent h-1.5 rounded-full" style={{ width: `${(campaign.emailed / (campaign.scraped || 1)) * 100}%` }}></div>
                                   </div>
-                                  <span className="text-gray-500">{campaign.emailed} Emailed</span>
+                                  <span className="text-gray-500">{campaign.emailed} Sent</span>
                                 </div>
                               </div>
                             </div>
@@ -463,7 +509,7 @@ export default function CampaignsPage() {
                           <td className="px-6 py-4 text-right">
                             <div className="flex flex-col items-end gap-2">
                               
-                              {campaign.readyForPdf > 0 && (
+                              {campaign.readyForPdf > 0 && campaign.source !== 'linkedin' && (
                                 <button 
                                   onClick={() => handleBulkAction(campaign.id, 'trigger_pdfs', 'POST')}
                                   disabled={isProcessing}
@@ -511,7 +557,6 @@ export default function CampaignsPage() {
                                 <span className="text-xs font-bold text-red-500">Pipeline Execution Failed</span>
                               )}
 
-                              {/* Only show loading spinner if it is actually active and waiting for a background worker */}
                               {!hasAvailableActions && campaign.status === 'Active' && (
                                 <span className="text-xs font-bold text-fixer-secondary flex items-center gap-1.5">
                                   <div className="w-3 h-3 border-2 border-fixer-secondary border-t-transparent rounded-full animate-spin"></div>
