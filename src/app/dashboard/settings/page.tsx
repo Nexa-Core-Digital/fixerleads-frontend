@@ -78,9 +78,10 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        // THE FIX: Added cache: 'no-store' to ensure Next.js always fetches the freshest data from Django
         const [userRes, agentRes] = await Promise.all([
-          fetchApi('/api/users/me/'),
-          fetchApi('/api/leads/agent-settings/')
+          fetchApi('/api/users/me/', { cache: 'no-store' }),
+          fetchApi('/api/leads/agent-settings/', { cache: 'no-store' })
         ]);
 
         if (userRes.ok) {
@@ -225,10 +226,10 @@ export default function SettingsPage() {
       const token = localStorage.getItem('access_token');
       const formData = new FormData();
       
+      // THE FIX: We append all keys to the FormData object, including empty strings.
+      // This ensures Django's backend serializer performs a complete and accurate update.
       Object.entries(agentData).forEach(([key, value]) => {
-        if (value !== "") {
-          formData.append(key, value);
-        }
+        formData.append(key, value);
       });
 
       if (productPdfFile) {
