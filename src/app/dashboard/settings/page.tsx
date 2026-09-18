@@ -30,7 +30,7 @@ export default function SettingsPage() {
   const [agentData, setAgentData] = useState({
     agency_name: "",
     sender_name: "",
-    campaign_goal: "service_audit", // 'service_audit' or 'product_pitch'
+    campaign_goal: "service_audit",
     service_type: "web_development",
     service_description: "",
     product_name: "",
@@ -41,6 +41,10 @@ export default function SettingsPage() {
     google_client_secret: "",
     google_refresh_token: ""
   });
+
+  const [productPdfFile, setProductPdfFile] = useState<File | null>(null);
+  const [pdfError, setPdfError] = useState("");
+  const productPdfRef = useRef<HTMLInputElement>(null);
 
   const [showInstructions, setShowInstructions] = useState(false);
 
@@ -153,6 +157,23 @@ export default function SettingsPage() {
     }
   };
 
+  const handleProductPdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setPdfError("");
+    
+    if (file) {
+      if (file.type !== "application/pdf") {
+        setPdfError("Only PDF files are allowed.");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setPdfError("File size exceeds the 5MB limit.");
+        return;
+      }
+      setProductPdfFile(file);
+    }
+  };
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingProfile(true);
@@ -180,6 +201,7 @@ export default function SettingsPage() {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: formData
       });
@@ -200,13 +222,26 @@ export default function SettingsPage() {
     setIsSavingAgent(true);
     
     try {
-      const payload = Object.fromEntries(
-        Object.entries(agentData).filter(([_, v]) => v !== "")
-      );
+      const token = localStorage.getItem('access_token');
+      const formData = new FormData();
+      
+      Object.entries(agentData).forEach(([key, value]) => {
+        if (value !== "") {
+          formData.append(key, value);
+        }
+      });
 
-      const res = await fetchApi('/api/leads/agent-settings/', {
+      if (productPdfFile) {
+        formData.append('product_pdf', productPdfFile);
+      }
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL}/api/leads/agent-settings/`, {
         method: 'POST',
-        body: JSON.stringify(payload)
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: formData
       });
 
       const data = await res.json();
@@ -219,6 +254,7 @@ export default function SettingsPage() {
         google_client_secret: "",
         google_refresh_token: ""
       }));
+      setProductPdfFile(null);
     } catch (error: any) {
       showMessage("error", error.message);
     } finally {
@@ -506,7 +542,7 @@ export default function SettingsPage() {
                     Provide the name and core benefits of your product. Claude will tailor cold emails and LinkedIn pitches specifically to explain how buying this product helps the prospect's business.
                   </p>
 
-                  <div className="space-y-4 pt-1">
+                  <div className="space-y-5 pt-1">
                     <div>
                       <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">Product Name</label>
                       <input
@@ -537,6 +573,39 @@ export default function SettingsPage() {
                         className="block w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-blue-600 focus:border-blue-600 sm:text-sm text-fixer-text placeholder-gray-400 resize-none font-sans leading-relaxed"
                       ></textarea>
                     </div>
+
+                    {/* NEW PDF UPLOAD FIELD */}
+                    <div className="pt-2 border-t border-blue-100">
+                      <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-2">
+                        Product Brochure / Spec Sheet (Optional)
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          ref={productPdfRef}
+                          onChange={handleProductPdfChange}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => productPdfRef.current?.click()}
+                          className="bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                          Upload PDF
+                        </button>
+                        <div className="flex-1 overflow-hidden">
+                          {productPdfFile ? (
+                            <span className="text-sm font-bold text-emerald-600 truncate block">✓ {productPdfFile.name}</span>
+                          ) : (
+                            <span className="text-xs text-gray-500">Max 5MB (.pdf only). This will be attached to your sales emails.</span>
+                          )}
+                        </div>
+                      </div>
+                      {pdfError && <p className="text-xs font-bold text-red-500 mt-2">{pdfError}</p>}
+                    </div>
+
                   </div>
                 </div>
               ) : (
@@ -704,7 +773,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="pt-2 flex justify-start">
-                <button type="submit" disabled={isSavingAgent} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-md shadow-purple-500/20 transition-all disabled:opacity-50">
+                <button type="submit" disabled={isSavingAgent || !!pdfError} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-md shadow-purple-500/20 transition-all disabled:opacity-50">
                   {isSavingAgent ? "Saving..." : "Save Agent Configuration"}
                 </button>
               </div>
