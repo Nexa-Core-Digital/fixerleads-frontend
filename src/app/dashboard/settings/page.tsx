@@ -30,21 +30,20 @@ export default function SettingsPage() {
   const [agentData, setAgentData] = useState({
     agency_name: "",
     sender_name: "",
-    campaign_goal: "service_audit",
+    campaign_goal: "service_audit", // 'service_audit' or 'product_pitch'
     service_type: "web_development",
     service_description: "",
     product_name: "",
     product_description: "",
     target_niche: "",
     target_location: "",
+    product_pdf: "", // Added from GET response
     google_client_id: "",
     google_client_secret: "",
     google_refresh_token: ""
   });
 
   const [productPdfFile, setProductPdfFile] = useState<File | null>(null);
-  const [pdfError, setPdfError] = useState("");
-  const productPdfRef = useRef<HTMLInputElement>(null);
 
   const [showInstructions, setShowInstructions] = useState(false);
 
@@ -78,10 +77,9 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // THE FIX: Added cache: 'no-store' to ensure Next.js always fetches the freshest data from Django
         const [userRes, agentRes] = await Promise.all([
-          fetchApi('/api/users/me/', { cache: 'no-store' }),
-          fetchApi('/api/leads/agent-settings/', { cache: 'no-store' })
+          fetchApi('/api/users/me/'),
+          fetchApi('/api/leads/agent-settings/')
         ]);
 
         if (userRes.ok) {
@@ -119,7 +117,8 @@ export default function SettingsPage() {
             product_name: agent.product_name || "",
             product_description: agent.product_description || "",
             target_niche: agent.target_niche || "",
-            target_location: agent.target_location || ""
+            target_location: agent.target_location || "",
+            product_pdf: agent.product_pdf || ""
           }));
         }
       } catch (error) {
@@ -158,31 +157,14 @@ export default function SettingsPage() {
     }
   };
 
-  const handleProductPdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setPdfError("");
-    
-    if (file) {
-      if (file.type !== "application/pdf") {
-        setPdfError("Only PDF files are allowed.");
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        setPdfError("File size exceeds the 5MB limit.");
-        return;
-      }
-      setProductPdfFile(file);
-    }
-  };
-
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingProfile(true);
-    
+
     try {
       const token = localStorage.getItem('access_token');
       const formData = new FormData();
-      
+
       formData.append('phone_number', profileData.phone_number);
       formData.append('country', profileData.country);
       formData.append('time_zone', profileData.time_zone);
@@ -202,14 +184,13 @@ export default function SettingsPage() {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
         },
         body: formData
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update profile");
-      
+
       showMessage("success", "Profile updated successfully!");
     } catch (error: any) {
       showMessage("error", error.message);
@@ -221,15 +202,15 @@ export default function SettingsPage() {
   const handleAgentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingAgent(true);
-    
+
     try {
       const token = localStorage.getItem('access_token');
       const formData = new FormData();
-      
-      // THE FIX: We append all keys to the FormData object, including empty strings.
-      // This ensures Django's backend serializer performs a complete and accurate update.
+
       Object.entries(agentData).forEach(([key, value]) => {
-        formData.append(key, value);
+        if (value !== "" && key !== "product_pdf") {
+          formData.append(key, value as string);
+        }
       });
 
       if (productPdfFile) {
@@ -239,21 +220,22 @@ export default function SettingsPage() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL}/api/leads/agent-settings/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
+          'Authorization': `Bearer ${token}`
         },
         body: formData
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save agent settings");
-      
+
       showMessage("success", "Agent configuration & outreach settings saved!");
+
       setAgentData((prev) => ({
         ...prev,
         google_client_id: "",
         google_client_secret: "",
-        google_refresh_token: ""
+        google_refresh_token: "",
+        product_pdf: data.product_pdf || prev.product_pdf
       }));
       setProductPdfFile(null);
     } catch (error: any) {
@@ -266,12 +248,12 @@ export default function SettingsPage() {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError("");
-    
+
     if (!passwordRegex.test(passwordData.newPassword)) {
       setPasswordError("New password must contain at least 8 characters, one uppercase, one lowercase, one number, and one special character.");
       return;
     }
-    
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setPasswordError("New passwords do not match.");
       return;
@@ -331,13 +313,12 @@ export default function SettingsPage() {
         </header>
 
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
-          
+
           {globalMessage.text && (
-            <div className={`px-4 py-3 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-4 border ${
-              globalMessage.type === 'success' 
-                ? 'bg-emerald-50 border-emerald-200 text-fixer-accent' 
+            <div className={`px-4 py-3 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-4 border ${globalMessage.type === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-fixer-accent'
                 : 'bg-red-50 border-red-200 text-red-600'
-            }`}>
+              }`}>
               {globalMessage.type === 'success' ? (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               ) : (
@@ -353,16 +334,16 @@ export default function SettingsPage() {
               <h2 className="text-lg font-bold text-fixer-darkBg">Personal Information</h2>
               <p className="text-sm text-fixer-muted mt-1">Update your photo and personal details here.</p>
             </div>
-            
+
             <form onSubmit={handleProfileSubmit} className="p-6 sm:p-8 space-y-6">
-              
+
               <div className="flex items-center gap-6 mb-8">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  className="hidden" 
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
                 />
 
                 <div className="h-20 w-20 rounded-full bg-gradient-to-r from-fixer-primary to-fixer-secondary p-0.5 shrink-0">
@@ -378,8 +359,8 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <div className="flex gap-3">
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="bg-white border border-gray-200 text-fixer-text hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors"
                     >
@@ -462,7 +443,7 @@ export default function SettingsPage() {
                   <input type="url" name="website" value={profileData.website} onChange={handleProfileChange} className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-fixer-primary focus:border-fixer-primary sm:text-sm transition-colors text-fixer-text" />
                 </div>
               </div>
-              
+
               <div className="pt-4 flex justify-end">
                 <button type="submit" disabled={isSavingProfile} className="bg-fixer-primary hover:bg-fixer-primaryHover text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-md shadow-blue-500/20 transition-all disabled:opacity-50">
                   {isSavingProfile ? "Saving..." : "Save Profile"}
@@ -480,20 +461,19 @@ export default function SettingsPage() {
               </h2>
               <p className="text-sm text-fixer-muted mt-1">Configure your primary outreach objective: audit technical service flaws or pitch direct product solutions.</p>
             </div>
-            
+
             <form onSubmit={handleAgentSubmit} className="p-6 sm:p-8 space-y-6">
 
               {/* CAMPAIGN GOAL SELECTOR */}
               <div>
                 <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-2">Campaign Outreach Strategy</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div 
+                  <div
                     onClick={() => setAgentData({ ...agentData, campaign_goal: 'service_audit' })}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      agentData.campaign_goal === 'service_audit' 
-                        ? 'border-purple-600 bg-purple-50/50 shadow-sm' 
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${agentData.campaign_goal === 'service_audit'
+                        ? 'border-purple-600 bg-purple-50/50 shadow-sm'
                         : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2.5 mb-1.5">
                       <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${agentData.campaign_goal === 'service_audit' ? 'border-purple-600' : 'border-gray-300'}`}>
@@ -506,13 +486,12 @@ export default function SettingsPage() {
                     </p>
                   </div>
 
-                  <div 
+                  <div
                     onClick={() => setAgentData({ ...agentData, campaign_goal: 'product_pitch' })}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      agentData.campaign_goal === 'product_pitch' 
-                        ? 'border-blue-600 bg-blue-50/50 shadow-sm' 
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${agentData.campaign_goal === 'product_pitch'
+                        ? 'border-blue-600 bg-blue-50/50 shadow-sm'
                         : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2.5 mb-1.5">
                       <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${agentData.campaign_goal === 'product_pitch' ? 'border-blue-600' : 'border-gray-300'}`}>
@@ -532,7 +511,7 @@ export default function SettingsPage() {
                 <div className="bg-gradient-to-r from-blue-50/80 to-cyan-50/80 p-5 rounded-xl border border-blue-100 space-y-4 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-extrabold text-blue-900 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                      <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                       Product Specification & Selling Value
                     </h3>
                     <span className="text-[11px] font-bold text-blue-600 bg-white px-2 py-0.5 rounded border border-blue-200">
@@ -543,7 +522,7 @@ export default function SettingsPage() {
                     Provide the name and core benefits of your product. Claude will tailor cold emails and LinkedIn pitches specifically to explain how buying this product helps the prospect's business.
                   </p>
 
-                  <div className="space-y-5 pt-1">
+                  <div className="space-y-4 pt-1">
                     <div>
                       <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">Product Name</label>
                       <input
@@ -575,45 +554,47 @@ export default function SettingsPage() {
                       ></textarea>
                     </div>
 
-                    {/* NEW PDF UPLOAD FIELD */}
-                    <div className="pt-2 border-t border-blue-100">
-                      <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-2">
-                        Product Brochure / Spec Sheet (Optional)
+                    {/* NEW: PDF Upload Section */}
+                    <div>
+                      <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">
+                        Product Promotional PDF (Optional)
                       </label>
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-1">
                         <input
                           type="file"
-                          accept=".pdf"
-                          ref={productPdfRef}
-                          onChange={handleProductPdfChange}
-                          className="hidden"
+                          accept="application/pdf"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setProductPdfFile(e.target.files[0]);
+                            }
+                          }}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border border-gray-300 rounded-lg bg-white"
                         />
-                        <button
-                          type="button"
-                          onClick={() => productPdfRef.current?.click()}
-                          className="bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                          Upload PDF
-                        </button>
-                        <div className="flex-1 overflow-hidden">
-                          {productPdfFile ? (
-                            <span className="text-sm font-bold text-emerald-600 truncate block">✓ {productPdfFile.name}</span>
-                          ) : (
-                            <span className="text-xs text-gray-500">Max 5MB (.pdf only). This will be attached to your sales emails.</span>
-                          )}
-                        </div>
+                        {agentData.product_pdf && !productPdfFile && (
+                          <a
+                            href={agentData.product_pdf}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 font-bold hover:underline shrink-0 flex items-center gap-1 bg-white px-3 py-2 border border-blue-200 rounded-lg"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            View Current PDF
+                          </a>
+                        )}
                       </div>
-                      {pdfError && <p className="text-xs font-bold text-red-500 mt-2">{pdfError}</p>}
+                      {productPdfFile && (
+                        <p className="text-xs text-emerald-600 mt-2 font-semibold">
+                          Selected file ready to upload: {productPdfFile.name}
+                        </p>
+                      )}
                     </div>
-
                   </div>
                 </div>
               ) : (
                 /* CONDITIONAL SECTION: SERVICE MATRIX FORM */
                 <div className="bg-gradient-to-r from-purple-50/70 to-blue-50/70 p-5 rounded-xl border border-purple-100/80 space-y-4 animate-in fade-in duration-200">
                   <h3 className="text-sm font-extrabold text-fixer-darkBg flex items-center gap-2">
-                    <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     Professional Service Definition
                   </h3>
                   <p className="text-xs text-fixer-muted leading-relaxed">
@@ -675,7 +656,7 @@ export default function SettingsPage() {
                 {/* Google Credentials */}
                 <div className="sm:col-span-2 border-t border-gray-100 my-1 pt-4">
                   <h3 className="text-sm font-extrabold text-fixer-darkBg flex items-center gap-2 mb-1">
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                     Google OAuth2 Credentials (Encrypted)
                   </h3>
                   <p className="text-xs text-fixer-muted">Credentials remain encrypted in the database and are used for authenticated cold dispatching.</p>
@@ -774,7 +755,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="pt-2 flex justify-start">
-                <button type="submit" disabled={isSavingAgent || !!pdfError} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-md shadow-purple-500/20 transition-all disabled:opacity-50">
+                <button type="submit" disabled={isSavingAgent} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-md shadow-purple-500/20 transition-all disabled:opacity-50">
                   {isSavingAgent ? "Saving..." : "Save Agent Configuration"}
                 </button>
               </div>
@@ -790,7 +771,7 @@ export default function SettingsPage() {
               </h2>
               <p className="text-sm text-fixer-muted mt-1">Ensure your account is using a long, random password to stay secure.</p>
             </div>
-            
+
             <form onSubmit={handlePasswordSubmit} className="p-6 sm:p-8 space-y-6">
               <div className="max-w-xl space-y-5">
                 <div>
