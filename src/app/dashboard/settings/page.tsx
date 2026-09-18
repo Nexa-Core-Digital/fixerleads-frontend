@@ -30,8 +30,11 @@ export default function SettingsPage() {
   const [agentData, setAgentData] = useState({
     agency_name: "",
     sender_name: "",
+    campaign_goal: "service_audit", // 'service_audit' or 'product_pitch'
     service_type: "web_development",
     service_description: "",
+    product_name: "",
+    product_description: "",
     target_niche: "",
     target_location: "",
     google_client_id: "",
@@ -105,8 +108,11 @@ export default function SettingsPage() {
             ...prev,
             agency_name: agent.agency_name || "",
             sender_name: agent.sender_name || "",
+            campaign_goal: agent.campaign_goal || "service_audit",
             service_type: agent.service_type || "web_development",
             service_description: agent.service_description || "",
+            product_name: agent.product_name || "",
+            product_description: agent.product_description || "",
             target_niche: agent.target_niche || "",
             target_location: agent.target_location || ""
           }));
@@ -206,7 +212,7 @@ export default function SettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save agent settings");
       
-      showMessage("success", "Agent credentials & multidimensional service profile saved!");
+      showMessage("success", "Agent configuration & outreach settings saved!");
       setAgentData((prev) => ({
         ...prev,
         google_client_id: "",
@@ -261,6 +267,10 @@ export default function SettingsPage() {
     }
   };
 
+  const getWordCount = (text: string) => {
+    return text.trim() ? text.trim().split(/\s+/).length : 0;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-fixer-bg flex items-center justify-center">
@@ -278,7 +288,7 @@ export default function SettingsPage() {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <h1 className="text-2xl font-extrabold text-fixer-darkBg">Account Settings</h1>
             <p className="text-sm font-medium text-fixer-muted mt-1">
-              Manage your personal information, specialized service offerings, outreach agents, and security credentials.
+              Manage your personal information, specialized service offerings, product sales engine, and security credentials.
             </p>
           </div>
         </header>
@@ -355,7 +365,7 @@ export default function SettingsPage() {
                 <div>
                   <label className="block text-sm font-bold text-gray-500 flex items-center gap-2">
                     Email Address
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                   </label>
                   <input type="email" value={profileData.email} disabled className="mt-1 block w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 sm:text-sm cursor-not-allowed" />
                 </div>
@@ -424,56 +434,151 @@ export default function SettingsPage() {
             </form>
           </div>
 
-          {/* Agent Settings Form (Multidimensional Services & Outreach Config) */}
+          {/* Agent Settings Form (Campaign Goal, Service Matrix & Product Sales Engine) */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-200 bg-gray-50/50">
               <h2 className="text-lg font-bold text-fixer-darkBg flex items-center gap-2">
                 <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                Agent Lead Discovery & Service Engine
+                Agent Lead Discovery & Outreach Engine
               </h2>
-              <p className="text-sm text-fixer-muted mt-1">Configure your primary commercial service, agency identity, and Gmail API credentials.</p>
+              <p className="text-sm text-fixer-muted mt-1">Configure your primary outreach objective: audit technical service flaws or pitch direct product solutions.</p>
             </div>
             
             <form onSubmit={handleAgentSubmit} className="p-6 sm:p-8 space-y-6">
-              
-              {/* SECTION: Professional Service Matrix */}
-              <div className="bg-gradient-to-r from-purple-50/70 to-blue-50/70 p-5 rounded-xl border border-purple-100/80 space-y-4">
-                <h3 className="text-sm font-extrabold text-fixer-darkBg flex items-center gap-2">
-                  <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                  Professional Service Definition
-                </h3>
-                <p className="text-xs text-fixer-muted leading-relaxed">
-                  Select your core professional offering. Anthropic Claude will analyze prospect websites, identify flaws related to this service, and generate customized pitches and audit reports.
-                </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                  <div>
-                    <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">Primary Service Offering</label>
-                    <select
-                      name="service_type"
-                      value={agentData.service_type}
-                      onChange={handleAgentChange}
-                      className="block w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 sm:text-sm font-bold text-fixer-darkBg cursor-pointer"
-                    >
-                      {SERVICE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
+              {/* CAMPAIGN GOAL SELECTOR */}
+              <div>
+                <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-2">Campaign Outreach Strategy</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div 
+                    onClick={() => setAgentData({ ...agentData, campaign_goal: 'service_audit' })}
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      agentData.campaign_goal === 'service_audit' 
+                        ? 'border-purple-600 bg-purple-50/50 shadow-sm' 
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 mb-1.5">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${agentData.campaign_goal === 'service_audit' ? 'border-purple-600' : 'border-gray-300'}`}>
+                        {agentData.campaign_goal === 'service_audit' && <div className="w-2 h-2 rounded-full bg-purple-600"></div>}
+                      </div>
+                      <span className="font-bold text-sm text-fixer-darkBg">Agency Service Audit</span>
+                    </div>
+                    <p className="text-xs text-fixer-muted leading-relaxed pl-6">
+                      AI inspects SSL, website code, SEO, and page speed to pitch technical services based on identified flaws.
+                    </p>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">Service Value Proposition (Optional)</label>
-                    <input
-                      type="text"
-                      name="service_description"
-                      value={agentData.service_description}
-                      onChange={handleAgentChange}
-                      placeholder="e.g. We design high-converting logos, brand kits, and UI redesigns."
-                      className="block w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 sm:text-sm text-fixer-text placeholder-gray-400"
-                    />
+                  <div 
+                    onClick={() => setAgentData({ ...agentData, campaign_goal: 'product_pitch' })}
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      agentData.campaign_goal === 'product_pitch' 
+                        ? 'border-blue-600 bg-blue-50/50 shadow-sm' 
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 mb-1.5">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${agentData.campaign_goal === 'product_pitch' ? 'border-blue-600' : 'border-gray-300'}`}>
+                        {agentData.campaign_goal === 'product_pitch' && <div className="w-2 h-2 rounded-full bg-blue-600"></div>}
+                      </div>
+                      <span className="font-bold text-sm text-fixer-darkBg">Product Sales Outreach</span>
+                    </div>
+                    <p className="text-xs text-fixer-muted leading-relaxed pl-6">
+                      Sell a physical or software product. Claude focuses on product benefits and ROI without citing website flaws or audits.
+                    </p>
                   </div>
                 </div>
               </div>
+
+              {/* CONDITIONAL SECTION: PRODUCT SALES FORM */}
+              {agentData.campaign_goal === 'product_pitch' ? (
+                <div className="bg-gradient-to-r from-blue-50/80 to-cyan-50/80 p-5 rounded-xl border border-blue-100 space-y-4 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold text-blue-900 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                      Product Specification & Selling Value
+                    </h3>
+                    <span className="text-[11px] font-bold text-blue-600 bg-white px-2 py-0.5 rounded border border-blue-200">
+                      Product Mode Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    Provide the name and core benefits of your product. Claude will tailor cold emails and LinkedIn pitches specifically to explain how buying this product helps the prospect's business.
+                  </p>
+
+                  <div className="space-y-4 pt-1">
+                    <div>
+                      <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">Product Name</label>
+                      <input
+                        type="text"
+                        name="product_name"
+                        value={agentData.product_name}
+                        onChange={handleAgentChange}
+                        placeholder="e.g. LeadPulse CRM or SolarHeat Commercial Solar Panel"
+                        className="block w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-blue-600 focus:border-blue-600 sm:text-sm font-bold text-fixer-darkBg placeholder-gray-400"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider">
+                          Product Overview & Core Benefits (Max 300 words)
+                        </label>
+                        <span className={`text-[11px] font-mono ${getWordCount(agentData.product_description) > 300 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                          {getWordCount(agentData.product_description)} / 300 words
+                        </span>
+                      </div>
+                      <textarea
+                        name="product_description"
+                        rows={4}
+                        value={agentData.product_description}
+                        onChange={handleAgentChange}
+                        placeholder="Detail your product specifications, problem solved, pricing advantage, and clear return on investment (ROI) for the customer..."
+                        className="block w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-blue-600 focus:border-blue-600 sm:text-sm text-fixer-text placeholder-gray-400 resize-none font-sans leading-relaxed"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* CONDITIONAL SECTION: SERVICE MATRIX FORM */
+                <div className="bg-gradient-to-r from-purple-50/70 to-blue-50/70 p-5 rounded-xl border border-purple-100/80 space-y-4 animate-in fade-in duration-200">
+                  <h3 className="text-sm font-extrabold text-fixer-darkBg flex items-center gap-2">
+                    <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    Professional Service Definition
+                  </h3>
+                  <p className="text-xs text-fixer-muted leading-relaxed">
+                    Select your core professional offering. Anthropic Claude will analyze prospect websites, identify flaws related to this service, and generate customized pitches and audit reports.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">Primary Service Offering</label>
+                      <select
+                        name="service_type"
+                        value={agentData.service_type}
+                        onChange={handleAgentChange}
+                        className="block w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 sm:text-sm font-bold text-fixer-darkBg cursor-pointer"
+                      >
+                        {SERVICE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-fixer-text uppercase tracking-wider mb-1">Service Value Proposition (Optional)</label>
+                      <input
+                        type="text"
+                        name="service_description"
+                        value={agentData.service_description}
+                        onChange={handleAgentChange}
+                        placeholder="e.g. We design high-converting logos, brand kits, and UI redesigns."
+                        className="block w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 sm:text-sm text-fixer-text placeholder-gray-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* SECTION: Identity & Targets */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
